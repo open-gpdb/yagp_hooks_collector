@@ -12,4 +12,6 @@ public:
   static bool filter_user(const std::string *username);
   static bool report_nested_queries();
   static size_t max_text_size();
+  static size_t max_analyze_size();
+  static bool need_collect_analyze(int exec_time_ms);
 };

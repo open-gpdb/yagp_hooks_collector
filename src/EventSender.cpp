@@ -96,6 +96,19 @@ void EventSender::executor_after_start(QueryDesc *query_desc, int /* eflags*/) {
       }
       update_query_state(query_desc, query, QueryState::START);
       set_query_plan(query_msg, query_desc);
+      if (Gp_role == GP_ROLE_DISPATCH && Config::enable_analyze()) {
+        /*
+         * Set up to track total elapsed time during query run.
+         * Make sure the space is allocated in the per-query
+         * context so it will go away at executor_end.
+         */
+        if (query_desc->totaltime == NULL) {
+          MemoryContext oldcxt;
+          oldcxt = MemoryContextSwitchTo(query_desc->estate->es_query_cxt);
+          query_desc->totaltime = InstrAlloc(1, INSTRUMENT_ALL);
+          MemoryContextSwitchTo(oldcxt);
+        }
+      }
       yagpcc::GPMetrics stats;
       std::swap(stats, *query_msg->mutable_query_metrics());
       if (connector->report_query(*query_msg, "started")) {
@@ -123,6 +136,21 @@ void EventSender::executor_end(QueryDesc *query_desc) {
         return;
       }
       update_query_state(query_desc, query, QueryState::END);
+      // Try to collect analyze stats.
+      if (Gp_role == GP_ROLE_DISPATCH && query_desc->totaltime) {
+        double ms = query_desc->totaltime->total * 1000.0;
+        if (Config::need_collect_analyze(ms)) {
+          // Wait for completion of all qExec processes.
+          if (query_desc->estate->dispatcherState &&
+            query_desc->estate->dispatcherState->primaryResults) {
+            cdbdisp_checkDispatchResult(
+                query_desc->estate->dispatcherState,
+                DISPATCH_WAIT_NONE
+            );
+          }
+          set_analyze_plan_text_json(query_desc, query_msg);
+        }
+      }
       if (is_top_level_query(query_desc, nesting_level)) {
         set_gp_metrics(query_msg->mutable_query_metrics(), query_desc,
                        nested_calls, nested_timing);

@@ -47,8 +47,9 @@ void set_segment_key(yagpcc::SegmentKey *key) {
   key->set_segindex(GpIdentity.segindex);
 }
 
-inline std::string char_to_trimmed_str(const char *str, size_t len) {
-  return std::string(str, std::min(len, Config::max_text_size()));
+inline std::string char_to_trimmed_str(const char *str, size_t len,
+                                       size_t lim = Config::max_text_size()) {
+  return std::string(str, std::min(len, lim));
 }
 
 void set_query_plan(yagpcc::SetQueryReq *req, QueryDesc *query_desc) {
@@ -217,4 +218,38 @@ yagpcc::SetQueryReq create_query_req(yagpcc::QueryStatus status) {
 
 double protots_to_double(const google::protobuf::Timestamp &ts) {
   return double(ts.seconds()) + double(ts.nanos()) / 1000000000.0;
+}
+
+void set_analyze_plan_text_json(QueryDesc *query_desc,
+                                yagpcc::SetQueryReq *req) {
+  MemoryContext oldcxt =
+      MemoryContextSwitchTo(query_desc->estate->es_query_cxt);
+
+  ExplainState es;
+  ExplainInitState(&es);
+  es.analyze = true;
+  es.verbose = true;
+  es.buffers = true;
+  es.timing = true;
+  es.summary = true;
+  es.format = EXPLAIN_FORMAT_JSON;
+
+  ExplainBeginOutput(&es);
+  ExplainPrintPlan(&es, query_desc);
+  ExplainPrintExecStatsEnd(&es, query_desc);
+  ExplainEndOutput(&es);
+  /* Remove last line break */
+  if (es.str->len > 0 && es.str->data[es.str->len - 1] == '\n') {
+    es.str->data[--es.str->len] = '\0';
+  }
+  /* Convert JSON array to JSON object */
+  es.str->data[0] = '{';
+  es.str->data[es.str->len - 1] = '}';
+ 
+  auto trimmed_analyze = char_to_trimmed_str(es.str->data, es.str->len,
+                                             Config::max_analyze_size());
+  req->mutable_query_info()->set_plan_text(trimmed_analyze);
+  
+  pfree(es.str->data);
+  MemoryContextSwitchTo(oldcxt);
 }
