@@ -91,6 +91,7 @@ void clear_big_fields(yagpcc::SetQueryReq *req) {
     qi->clear_template_plan_text();
     qi->clear_query_text();
     qi->clear_template_query_text();
+    qi->clear_analyze_text();
   }
 }
 
@@ -248,7 +249,7 @@ void set_analyze_plan_text_json(QueryDesc *query_desc,
  
   auto trimmed_analyze = char_to_trimmed_str(es.str->data, es.str->len,
                                              Config::max_analyze_size());
-  req->mutable_query_info()->set_plan_text(trimmed_analyze);
+  req->mutable_query_info()->set_analyze_text(trimmed_analyze);
   
   pfree(es.str->data);
   MemoryContextSwitchTo(oldcxt);
