@@ -223,6 +223,9 @@ double protots_to_double(const google::protobuf::Timestamp &ts) {
 
 void set_analyze_plan_text_json(QueryDesc *query_desc,
                                 yagpcc::SetQueryReq *req) {
+  if (query_desc->instrument_options == INSTRUMENT_NONE)
+      return;
+
   MemoryContext oldcxt =
       MemoryContextSwitchTo(query_desc->estate->es_query_cxt);
 

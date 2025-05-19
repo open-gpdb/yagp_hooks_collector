@@ -20,6 +20,11 @@ extern "C" {
 #include "PgUtils.h"
 #include "ProtoUtils.h"
 
+#define enable_analyze() \
+	(Config::min_analyze_time() >= 0 && \
+	 Gp_role == GP_ROLE_DISPATCH && \
+	 (nesting_level == 0 || Config::report_nested_queries()))
+
 void EventSender::query_metrics_collect(QueryMetricsStatus status, void *arg) {
   if (Gp_role != GP_ROLE_DISPATCH && Gp_role != GP_ROLE_EXECUTE) {
     return;
@@ -54,7 +59,7 @@ void EventSender::query_metrics_collect(QueryMetricsStatus status, void *arg) {
 }
 
 void EventSender::executor_before_start(QueryDesc *query_desc,
-                                        int /* eflags*/) {
+                                        int eflags) {
   if (!connector) {
     return;
   }
@@ -66,7 +71,7 @@ void EventSender::executor_before_start(QueryDesc *query_desc,
     return;
   }
   collect_query_submit(query_desc);
-  if (Gp_role == GP_ROLE_DISPATCH && Config::enable_analyze()) {
+  if (enable_analyze() &&  (eflags & EXEC_FLAG_EXPLAIN_ONLY) == 0) {
     query_desc->instrument_options |= INSTRUMENT_BUFFERS;
     query_desc->instrument_options |= INSTRUMENT_ROWS;
     query_desc->instrument_options |= INSTRUMENT_TIMER;
@@ -96,12 +101,10 @@ void EventSender::executor_after_start(QueryDesc *query_desc, int /* eflags*/) {
       }
       update_query_state(query_desc, query, QueryState::START);
       set_query_plan(query_msg, query_desc);
-      if (Gp_role == GP_ROLE_DISPATCH && Config::enable_analyze()) {
-        /*
-         * Set up to track total elapsed time during query run.
-         * Make sure the space is allocated in the per-query
-         * context so it will go away at executor_end.
-         */
+      if (enable_analyze()) {
+        // Set up to track total elapsed time during query run.
+        // Make sure the space is allocated in the per-query
+        // context so it will go away at executor_end.
         if (query_desc->totaltime == NULL) {
           MemoryContext oldcxt;
           oldcxt = MemoryContextSwitchTo(query_desc->estate->es_query_cxt);
@@ -137,17 +140,19 @@ void EventSender::executor_end(QueryDesc *query_desc) {
       }
       update_query_state(query_desc, query, QueryState::END);
       // Try to collect analyze stats.
-      if (Gp_role == GP_ROLE_DISPATCH && query_desc->totaltime) {
-        double ms = query_desc->totaltime->total * 1000.0;
-        if (Config::need_collect_analyze(ms)) {
-          // Wait for completion of all qExec processes.
-          if (query_desc->estate->dispatcherState &&
+      if (query_desc->totaltime && enable_analyze()) {
+        // Wait for completion of all qExec processes.
+        if (query_desc->estate->dispatcherState &&
             query_desc->estate->dispatcherState->primaryResults) {
-            cdbdisp_checkDispatchResult(
-                query_desc->estate->dispatcherState,
-                DISPATCH_WAIT_NONE
-            );
-          }
+			      cdbdisp_checkDispatchResult(query_desc->estate->dispatcherState,
+                                         DISPATCH_WAIT_NONE);
+        }
+		    // Make sure stats accumulation is done.
+        // (Note: it's okay if several levels of hook all do this.)
+		    InstrEndLoop(query_desc->totaltime);
+
+        double ms = query_desc->totaltime->total * 1000.0;
+        if (ms >= Config::min_analyze_time()) {
           set_analyze_plan_text_json(query_desc, query_msg);
         }
       }

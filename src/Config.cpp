@@ -68,16 +68,12 @@ void Config::init() {
 }
 
 std::string Config::uds_path() { return guc_uds_path; }
-bool Config::enable_analyze() { return guc_min_analyze_time >= 0; }
 bool Config::enable_cdbstats() { return guc_enable_cdbstats; }
 bool Config::enable_collector() { return guc_enable_collector; }
 bool Config::report_nested_queries() { return guc_report_nested_queries; }
 size_t Config::max_text_size() { return guc_max_text_size * 1024; }
 size_t Config::max_analyze_size() { return guc_max_analyze_size * 1024; }
-
-bool Config::need_collect_analyze(int exec_time_ms) {
-  return Config::enable_analyze() && exec_time_ms >= guc_min_analyze_time;
-}
+int Config::min_analyze_time() { return guc_min_analyze_time; };
 
 bool Config::filter_user(const std::string *username) {
   if (!ignored_users) {
