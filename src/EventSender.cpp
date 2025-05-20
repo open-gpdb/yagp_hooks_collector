@@ -20,10 +20,9 @@ extern "C" {
 #include "PgUtils.h"
 #include "ProtoUtils.h"
 
-#define enable_analyze() \
-	(Config::min_analyze_time() >= 0 && \
-	 Gp_role == GP_ROLE_DISPATCH && \
-	 (nesting_level == 0 || Config::report_nested_queries()))
+#define enable_analyze()                                                       \
+  (Config::min_analyze_time() >= 0 && Gp_role == GP_ROLE_DISPATCH &&           \
+   (nesting_level == 0 || Config::report_nested_queries()))
 
 void EventSender::query_metrics_collect(QueryMetricsStatus status, void *arg) {
   if (Gp_role != GP_ROLE_DISPATCH && Gp_role != GP_ROLE_EXECUTE) {
@@ -58,8 +57,7 @@ void EventSender::query_metrics_collect(QueryMetricsStatus status, void *arg) {
   }
 }
 
-void EventSender::executor_before_start(QueryDesc *query_desc,
-                                        int eflags) {
+void EventSender::executor_before_start(QueryDesc *query_desc, int eflags) {
   if (!connector) {
     return;
   }
@@ -71,7 +69,7 @@ void EventSender::executor_before_start(QueryDesc *query_desc,
     return;
   }
   collect_query_submit(query_desc);
-  if (enable_analyze() &&  (eflags & EXEC_FLAG_EXPLAIN_ONLY) == 0) {
+  if (enable_analyze() && (eflags & EXEC_FLAG_EXPLAIN_ONLY) == 0) {
     query_desc->instrument_options |= INSTRUMENT_BUFFERS;
     query_desc->instrument_options |= INSTRUMENT_ROWS;
     query_desc->instrument_options |= INSTRUMENT_TIMER;
@@ -144,8 +142,8 @@ void EventSender::executor_end(QueryDesc *query_desc) {
         // Wait for completion of all qExec processes.
         if (query_desc->estate->dispatcherState &&
             query_desc->estate->dispatcherState->primaryResults) {
-            cdbdisp_checkDispatchResult(query_desc->estate->dispatcherState,
-                                        DISPATCH_WAIT_NONE);
+          cdbdisp_checkDispatchResult(query_desc->estate->dispatcherState,
+                                      DISPATCH_WAIT_NONE);
         }
         // Make sure stats accumulation is done.
         // (Note: it's okay if several levels of hook all do this.)

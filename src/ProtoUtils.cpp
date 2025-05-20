@@ -224,7 +224,7 @@ double protots_to_double(const google::protobuf::Timestamp &ts) {
 void set_analyze_plan_text_json(QueryDesc *query_desc,
                                 yagpcc::SetQueryReq *req) {
   if (query_desc->instrument_options == INSTRUMENT_NONE)
-      return;
+    return;
 
   MemoryContext oldcxt =
       MemoryContextSwitchTo(query_desc->estate->es_query_cxt);
@@ -242,18 +242,18 @@ void set_analyze_plan_text_json(QueryDesc *query_desc,
   ExplainPrintPlan(&es, query_desc);
   ExplainPrintExecStatsEnd(&es, query_desc);
   ExplainEndOutput(&es);
-  /* Remove last line break */
+  // Remove last line break.
   if (es.str->len > 0 && es.str->data[es.str->len - 1] == '\n') {
     es.str->data[--es.str->len] = '\0';
   }
-  /* Convert JSON array to JSON object */
+  // Convert JSON array to JSON object.
   es.str->data[0] = '{';
   es.str->data[es.str->len - 1] = '}';
- 
+
   auto trimmed_analyze = char_to_trimmed_str(es.str->data, es.str->len,
                                              Config::max_analyze_size());
   req->mutable_query_info()->set_analyze_text(trimmed_analyze);
-  
+
   pfree(es.str->data);
   MemoryContextSwitchTo(oldcxt);
 }

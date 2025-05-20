@@ -15,8 +15,8 @@ static bool guc_enable_cdbstats = true;
 static bool guc_enable_collector = true;
 static bool guc_report_nested_queries = true;
 static char *guc_ignored_users = nullptr;
-static int guc_max_text_size = 1024; // in KB
-static int guc_min_analyze_time = -1; // uninitialized state
+static int guc_max_text_size = 1024;    // in KB
+static int guc_min_analyze_time = -1;   // uninitialized state
 static int guc_max_analyze_size = 1024; // in KB
 static std::unique_ptr<std::unordered_set<std::string>> ignored_users = nullptr;
 
@@ -29,7 +29,6 @@ void Config::init() {
   DefineCustomBoolVariable(
       "yagpcc.enable", "Enable metrics collector", 0LL, &guc_enable_collector,
       true, PGC_SUSET, GUC_NOT_IN_SAMPLE | GUC_GPDB_NEED_SYNC, 0LL, 0LL, 0LL);
-
 
   DefineCustomBoolVariable(
       "yagpcc.enable_cdbstats", "Collect CDB metrics in yagpcc", 0LL,
@@ -52,7 +51,7 @@ void Config::init() {
       "Make yagpcc trim plan and query texts longer than configured size", NULL,
       &guc_max_text_size, 1024, 0, INT_MAX / 1024, PGC_SUSET,
       GUC_NOT_IN_SAMPLE | GUC_GPDB_NEED_SYNC | GUC_UNIT_KB, NULL, NULL, NULL);
-  
+
   DefineCustomIntVariable(
       "yagpcc.min_analyze_time",
       "Sets the minimum execution time above which plans will be logged.",
