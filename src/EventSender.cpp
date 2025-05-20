@@ -144,12 +144,12 @@ void EventSender::executor_end(QueryDesc *query_desc) {
         // Wait for completion of all qExec processes.
         if (query_desc->estate->dispatcherState &&
             query_desc->estate->dispatcherState->primaryResults) {
-			      cdbdisp_checkDispatchResult(query_desc->estate->dispatcherState,
-                                         DISPATCH_WAIT_NONE);
+            cdbdisp_checkDispatchResult(query_desc->estate->dispatcherState,
+                                        DISPATCH_WAIT_NONE);
         }
-		    // Make sure stats accumulation is done.
+        // Make sure stats accumulation is done.
         // (Note: it's okay if several levels of hook all do this.)
-		    InstrEndLoop(query_desc->totaltime);
+        InstrEndLoop(query_desc->totaltime);
 
         double ms = query_desc->totaltime->total * 1000.0;
         if (ms >= Config::min_analyze_time()) {
