@@ -11,13 +11,14 @@ extern "C" {
 }
 
 static char *guc_uds_path = nullptr;
+static bool guc_enable_analyze = true;
 static bool guc_enable_cdbstats = true;
 static bool guc_enable_collector = true;
 static bool guc_report_nested_queries = true;
 static char *guc_ignored_users = nullptr;
-static int guc_max_text_size = 1024;    // in KB
-static int guc_min_analyze_time = -1;   // uninitialized state
-static int guc_max_analyze_size = 1024; // in KB
+static int guc_max_text_size = 1024;  // in KB
+static int guc_max_plan_size = 1024;  // in KB
+static int guc_min_analyze_time = -1; // uninitialized state
 static std::unique_ptr<std::unordered_set<std::string>> ignored_users = nullptr;
 
 void Config::init() {
@@ -29,6 +30,11 @@ void Config::init() {
   DefineCustomBoolVariable(
       "yagpcc.enable", "Enable metrics collector", 0LL, &guc_enable_collector,
       true, PGC_SUSET, GUC_NOT_IN_SAMPLE | GUC_GPDB_NEED_SYNC, 0LL, 0LL, 0LL);
+
+  DefineCustomBoolVariable(
+      "yagpcc.enable_analyze", "Collect analyze metrics in yagpcc", 0LL,
+      &guc_enable_analyze, true, PGC_SUSET,
+      GUC_NOT_IN_SAMPLE | GUC_GPDB_NEED_SYNC, 0LL, 0LL, 0LL);
 
   DefineCustomBoolVariable(
       "yagpcc.enable_cdbstats", "Collect CDB metrics in yagpcc", 0LL,
@@ -48,8 +54,14 @@ void Config::init() {
 
   DefineCustomIntVariable(
       "yagpcc.max_text_size",
-      "Make yagpcc trim plan and query texts longer than configured size", NULL,
+      "Make yagpcc trim query texts longer than configured size", NULL,
       &guc_max_text_size, 1024, 0, INT_MAX / 1024, PGC_SUSET,
+      GUC_NOT_IN_SAMPLE | GUC_GPDB_NEED_SYNC | GUC_UNIT_KB, NULL, NULL, NULL);
+
+  DefineCustomIntVariable(
+      "yagpcc.max_plan_size",
+      "Make yagpcc trim plan longer than configured size", NULL,
+      &guc_max_plan_size, 1024, 0, INT_MAX / 1024, PGC_SUSET,
       GUC_NOT_IN_SAMPLE | GUC_GPDB_NEED_SYNC | GUC_UNIT_KB, NULL, NULL, NULL);
 
   DefineCustomIntVariable(
@@ -58,20 +70,15 @@ void Config::init() {
       "Zero prints all plans. -1 turns this feature off.",
       &guc_min_analyze_time, -1, -1, INT_MAX, PGC_USERSET,
       GUC_NOT_IN_SAMPLE | GUC_GPDB_NEED_SYNC | GUC_UNIT_MS, NULL, NULL, NULL);
-
-  DefineCustomIntVariable(
-      "yagpcc.max_analyze_size",
-      "Make yagpcc trim analyze plan longer than configured size", NULL,
-      &guc_max_analyze_size, 1024, 0, INT_MAX / 1024, PGC_SUSET,
-      GUC_NOT_IN_SAMPLE | GUC_GPDB_NEED_SYNC | GUC_UNIT_KB, NULL, NULL, NULL);
 }
 
 std::string Config::uds_path() { return guc_uds_path; }
+bool Config::enable_analyze() { return guc_enable_analyze; }
 bool Config::enable_cdbstats() { return guc_enable_cdbstats; }
 bool Config::enable_collector() { return guc_enable_collector; }
 bool Config::report_nested_queries() { return guc_report_nested_queries; }
 size_t Config::max_text_size() { return guc_max_text_size * 1024; }
-size_t Config::max_analyze_size() { return guc_max_analyze_size * 1024; }
+size_t Config::max_plan_size() { return guc_max_plan_size * 1024; }
 int Config::min_analyze_time() { return guc_min_analyze_time; };
 
 bool Config::filter_user(const std::string *username) {
