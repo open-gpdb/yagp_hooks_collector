@@ -8,6 +8,7 @@
 extern "C" {
 #include "postgres.h"
 #include "access/hash.h"
+#include "access/xact.h"
 #include "cdb/cdbinterconnect.h"
 #include "cdb/cdbvars.h"
 #include "cdb/ml_ipc.h"
@@ -226,6 +227,11 @@ double protots_to_double(const google::protobuf::Timestamp &ts) {
 
 void set_analyze_plan_text_json(QueryDesc *query_desc,
                                 yagpcc::SetQueryReq *req) {
+  // Make sure it is a valid txn and it is not an utility
+  // statement for ExplainPrintPlan() later.
+  if (!IsTransactionState() || !query_desc->plannedstmt) {
+    return;
+  }
   MemoryContext oldcxt =
       MemoryContextSwitchTo(query_desc->estate->es_query_cxt);
 

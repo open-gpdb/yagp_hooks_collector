@@ -123,10 +123,7 @@ ExplainState get_analyze_state_json(QueryDesc *query_desc, bool analyze) {
   if (analyze) {
     PG_TRY();
     {
-      // Print the plan first. Note that explain plan is collected
-      // during executor_after_start().
       ExplainPrintPlan(&es, query_desc);
-      // Append exec stats to the plan.
       ExplainPrintExecStatsEnd(&es, query_desc);
     }
     PG_CATCH();

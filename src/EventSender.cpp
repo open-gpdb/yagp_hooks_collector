@@ -138,23 +138,6 @@ void EventSender::executor_end(QueryDesc *query_desc) {
         return;
       }
       update_query_state(query_desc, query, QueryState::END);
-      // Try to collect analyze stats.
-      if (query_desc->totaltime && need_collect_analyze()) {
-        // Wait for completion of all qExec processes.
-        if (query_desc->estate->dispatcherState &&
-            query_desc->estate->dispatcherState->primaryResults) {
-          cdbdisp_checkDispatchResult(query_desc->estate->dispatcherState,
-                                      DISPATCH_WAIT_NONE);
-        }
-        // Make sure stats accumulation is done.
-        // (Note: it's okay if several levels of hook all do this.)
-        InstrEndLoop(query_desc->totaltime);
-
-        double ms = query_desc->totaltime->total * 1000.0;
-        if (ms >= Config::min_analyze_time()) {
-          set_analyze_plan_text_json(query_desc, query_msg);
-        }
-      }
       if (is_top_level_query(query_desc, nesting_level)) {
         set_gp_metrics(query_msg->mutable_query_metrics(), query_desc,
                        nested_calls, nested_timing);
@@ -291,6 +274,38 @@ void EventSender::ic_metrics_collect() {
   ic_statistics.recvAckNum += metrics.recvAckNum;
   ic_statistics.statusQueryMsgNum += metrics.statusQueryMsgNum;
 #endif
+}
+
+void EventSender::analyze_stats_collect(QueryDesc *query_desc) {
+  if (!connector || Gp_role != GP_ROLE_DISPATCH) {
+    return;
+  }
+  if (filter_query(query_desc) ||
+      !nesting_is_valid(query_desc, nesting_level)) {
+    return;
+  }
+  auto query = get_query_message(query_desc);
+  auto query_msg = query->message;
+  *query_msg->mutable_end_time() = current_ts();
+  // Yet another greenplum weirdness: thats actually a nested query
+  // which is being committed/rollbacked. Treat it accordingly.
+  if (query->state == UNKNOWN && !need_report_nested_query()) {
+    return;
+  }
+  if (!query_desc->totaltime || !need_collect_analyze()) {
+    return;
+  }
+  // Make sure stats accumulation is done.
+  // (Note: it's okay if several levels of hook all do this.)
+  InstrEndLoop(query_desc->totaltime);
+
+  double ms = query_desc->totaltime->total * 1000.0;
+  if (ms >= Config::min_analyze_time()) {
+    set_analyze_plan_text_json(query_desc, query_msg);
+    if (connector->report_query(*query_msg, "analyze")) {
+      clear_big_fields(query_msg);
+    }
+  }
 }
 
 EventSender::EventSender() {
