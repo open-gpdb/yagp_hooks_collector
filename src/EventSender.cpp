@@ -280,8 +280,7 @@ void EventSender::analyze_stats_collect(QueryDesc *query_desc) {
   if (!connector || Gp_role != GP_ROLE_DISPATCH) {
     return;
   }
-  if (filter_query(query_desc) ||
-      !nesting_is_valid(query_desc, nesting_level)) {
+  if (!need_collect(query_desc, nesting_level)) {
     return;
   }
   auto query = get_query_message(query_desc);
@@ -302,9 +301,6 @@ void EventSender::analyze_stats_collect(QueryDesc *query_desc) {
   double ms = query_desc->totaltime->total * 1000.0;
   if (ms >= Config::min_analyze_time()) {
     set_analyze_plan_text_json(query_desc, query_msg);
-    if (connector->report_query(*query_msg, "analyze")) {
-      clear_big_fields(query_msg);
-    }
   }
 }
 
