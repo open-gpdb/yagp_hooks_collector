@@ -25,8 +25,10 @@ static ExecutorRun_hook_type previous_ExecutorRun_hook = nullptr;
 static ExecutorFinish_hook_type previous_ExecutorFinish_hook = nullptr;
 static ExecutorEnd_hook_type previous_ExecutorEnd_hook = nullptr;
 static query_info_collect_hook_type previous_query_info_collect_hook = nullptr;
+#ifdef ANALYZE_STATS_COLLECT_HOOK
 static analyze_stats_collect_hook_type previous_analyze_stats_collect_hook =
     nullptr;
+#endif
 #ifdef IC_TEARDOWN_HOOK
 static ic_teardown_hook_type previous_ic_teardown_hook = nullptr;
 #endif
@@ -39,7 +41,9 @@ static void ya_ExecutorEnd_hook(QueryDesc *query_desc);
 static void ya_query_info_collect_hook(QueryMetricsStatus status, void *arg);
 static void ya_ic_teardown_hook(ChunkTransportState *transportStates,
                                 bool hasErrors);
+#ifdef ANALYZE_STATS_COLLECT_HOOK
 static void ya_analyze_stats_collect_hook(QueryDesc *query_desc);
+#endif
 
 static EventSender *sender = nullptr;
 
@@ -76,8 +80,10 @@ void hooks_init() {
   previous_ic_teardown_hook = ic_teardown_hook;
   ic_teardown_hook = ya_ic_teardown_hook;
 #endif
+#ifdef ANALYZE_STATS_COLLECT_HOOK
   previous_analyze_stats_collect_hook = analyze_stats_collect_hook;
   analyze_stats_collect_hook = ya_analyze_stats_collect_hook;
+#endif
   stat_statements_parser_init();
 }
 
@@ -90,7 +96,9 @@ void hooks_deinit() {
 #ifdef IC_TEARDOWN_HOOK
   ic_teardown_hook = previous_ic_teardown_hook;
 #endif
+#ifdef ANALYZE_STATS_COLLECT_HOOK
   analyze_stats_collect_hook = previous_analyze_stats_collect_hook;
+#endif
   stat_statements_parser_deinit();
   if (sender) {
     delete sender;
@@ -172,12 +180,14 @@ void ya_ic_teardown_hook(ChunkTransportState *transportStates, bool hasErrors) {
 #endif
 }
 
+#ifdef ANALYZE_STATS_COLLECT_HOOK
 void ya_analyze_stats_collect_hook(QueryDesc *query_desc) {
   cpp_call(get_sender(), &EventSender::analyze_stats_collect, query_desc);
   if (previous_analyze_stats_collect_hook) {
     (*previous_analyze_stats_collect_hook)(query_desc);
   }
 }
+#endif
 
 static void check_stats_loaded() {
   if (!YagpStat::loaded()) {
