@@ -11,7 +11,7 @@ extern "C" {
 }
 
 static char *guc_uds_path = nullptr;
-static bool guc_enable_analyze = true;
+static bool guc_enable_analyze = false;
 static bool guc_enable_cdbstats = true;
 static bool guc_enable_collector = true;
 static bool guc_report_nested_queries = true;
@@ -70,7 +70,7 @@ void Config::init() {
 
   DefineCustomBoolVariable(
       "yagpcc.enable_analyze", "Collect analyze metrics in yagpcc", 0LL,
-      &guc_enable_analyze, true, PGC_SUSET,
+      &guc_enable_analyze, false, PGC_SUSET,
       GUC_NOT_IN_SAMPLE | GUC_GPDB_NEED_SYNC, 0LL, 0LL, 0LL);
 
   DefineCustomBoolVariable(
