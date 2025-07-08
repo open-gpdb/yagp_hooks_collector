@@ -20,6 +20,7 @@ extern "C" {
 #include "PgUtils.h"
 #include "ProtoUtils.h"
 
+extern ContextUniquePtr message_context;
 extern ContextUniquePtr backend_context;
 
 #define need_collect_analyze()                                                 \
@@ -29,6 +30,9 @@ extern ContextUniquePtr backend_context;
 void EventSender::query_metrics_collect(QueryMetricsStatus status, void *arg) {
   if (Gp_role != GP_ROLE_DISPATCH && Gp_role != GP_ROLE_EXECUTE) {
     return;
+  }
+  if (!message_context) {
+    message_context = ManagedMemContext::create_empty(MessageContext);
   }
   switch (status) {
   case METRICS_PLAN_NODE_INITIALIZE:
@@ -63,9 +67,13 @@ void EventSender::executor_before_start(QueryDesc *query_desc, int eflags) {
   if (!connector) {
     return;
   }
+  if (!message_context) {
+    message_context = ManagedMemContext::create_empty(MessageContext);
+  }
   if (is_top_level_query(query_desc, nesting_level)) {
     nested_timing = 0;
     nested_calls = 0;
+    query_msgs.clear();
   }
   Config::sync();
   if (!need_collect(query_desc, nesting_level)) {
@@ -128,6 +136,9 @@ void EventSender::executor_end(QueryDesc *query_desc) {
   if (!connector ||
       (Gp_role != GP_ROLE_DISPATCH && Gp_role != GP_ROLE_EXECUTE)) {
     return;
+  }
+  if (!message_context) {
+    message_context = ManagedMemContext::create_empty(MessageContext);
   }
   if (!filter_query(query_desc)) {
     auto *query = get_query_message(query_desc);
@@ -251,6 +262,9 @@ void EventSender::ic_metrics_collect() {
   if (Gp_interconnect_type != INTERCONNECT_TYPE_UDPIFC) {
     return;
   }
+  if (!message_context) {
+    message_context = ManagedMemContext::create_empty(MessageContext);
+  }
   if (!connector || gp_command_count == 0 || !Config::enable_collector() ||
       Config::filter_user(get_user_name())) {
     return;
@@ -282,6 +296,9 @@ void EventSender::ic_metrics_collect() {
 void EventSender::analyze_stats_collect(QueryDesc *query_desc) {
   if (!connector || Gp_role != GP_ROLE_DISPATCH) {
     return;
+  }
+  if (!message_context) {
+    message_context = ManagedMemContext::create_empty(MessageContext);
   }
   if (!need_collect(query_desc, nesting_level)) {
     return;
@@ -319,12 +336,6 @@ EventSender::EventSender()
 #ifdef IC_TEARDOWN_HOOK
   memset(&ic_statistics, 0, sizeof(ICStatistics));
 #endif
-}
-
-EventSender::~EventSender() {
-  for (auto iter = query_msgs.begin(); iter != query_msgs.end(); ++iter) {
-    delete iter->second.message;
-  }
 }
 
 // That's basically a very simplistic state machine to fix or highlight any bugs
@@ -366,11 +377,14 @@ EventSender::QueryItem *EventSender::get_query_message(QueryDesc *query_desc) {
       query_msgs.find({query_desc->gpmon_pkt->u.qexec.key.ccnt,
                        query_desc->gpmon_pkt->u.qexec.key.tmid}) ==
           query_msgs.end()) {
-    query_desc->gpmon_pkt = (gpmon_packet_t *)palloc0(sizeof(gpmon_packet_t));
+    query_desc->gpmon_pkt =
+        message_context->allocate0<gpmon_packet_t>(sizeof(gpmon_packet_t));
     query_desc->gpmon_pkt->u.qexec.key.ccnt = gp_command_count;
     query_desc->gpmon_pkt->u.qexec.key.tmid = nesting_level;
-    query_msgs.insert({{gp_command_count, nesting_level},
-                       QueryItem(UNKNOWN, new yagpcc::SetQueryReq())});
+    query_msgs.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(gp_command_count, nesting_level),
+        std::forward_as_tuple(message_context->pnew<yagpcc::SetQueryReq>()));
   }
   return &query_msgs.at({query_desc->gpmon_pkt->u.qexec.key.ccnt,
                          query_desc->gpmon_pkt->u.qexec.key.tmid});
@@ -393,6 +407,4 @@ void EventSender::update_nested_counters(QueryDesc *query_desc) {
   }
 }
 
-EventSender::QueryItem::QueryItem(EventSender::QueryState st,
-                                  yagpcc::SetQueryReq *msg)
-    : state(st), message(msg) {}
+EventSender::QueryItem::QueryItem(yagpcc::SetQueryReq *msg) : message(msg) {}

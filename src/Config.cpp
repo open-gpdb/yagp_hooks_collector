@@ -1,7 +1,6 @@
 #include "Config.h"
 #include <limits.h>
 #include <memory>
-#include <string>
 #include <unordered_set>
 
 extern "C" {
@@ -119,11 +118,12 @@ size_t Config::max_text_size() { return guc_max_text_size * 1024; }
 size_t Config::max_plan_size() { return guc_max_plan_size * 1024; }
 int Config::min_analyze_time() { return guc_min_analyze_time; };
 
-bool Config::filter_user(const std::string *username) {
-  if (!username || !ignored_users_set) {
+bool Config::filter_user(std::string_view username) {
+  if (username.empty() || ignored_users_set == nullptr) {
     return true;
   }
-  return ignored_users_set->find(*username) != ignored_users_set->end();
+  return ignored_users_set->find(std::string(username)) !=
+         ignored_users_set->end();
 }
 
 void Config::sync() {

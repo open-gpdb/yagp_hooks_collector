@@ -3,35 +3,38 @@
 
 extern "C" {
 #include "utils/guc.h"
+#include "utils/memutils.h"
 #include "commands/dbcommands.h"
 #include "commands/resgroupcmds.h"
 #include "cdb/cdbvars.h"
 }
 
-std::string *get_user_name() {
+std::string_view get_user_name() {
   const char *username = GetConfigOption("session_authorization", false, false);
-  // username is not to be freed
-  return username ? new std::string(username) : nullptr;
+  // Allocate username per message context as it can be changed in the next
+  // query.
+  return username ? MemoryContextStrdup(MessageContext, username)
+                  : std::string_view();
 }
 
-std::string *get_db_name() {
+std::string_view get_db_name() {
+  // Switch to the context since get_database_name() returns a palloc'd string.
+  MemoryContext oldctx = MemoryContextSwitchTo(MessageContext);
   char *dbname = get_database_name(MyDatabaseId);
-  std::string *result = nullptr;
-  if (dbname) {
-    result = new std::string(dbname);
-    pfree(dbname);
-  }
-  return result;
+  MemoryContextSwitchTo(oldctx);
+  return dbname ? dbname : std::string_view();
 }
 
-std::string *get_rg_name() {
+std::string_view get_rg_name() {
   auto groupId = ResGroupGetGroupIdBySessionId(MySessionState->sessionId);
   if (!OidIsValid(groupId))
-    return nullptr;
+    return {};
+  // Switch to the context since GetResGroupNameForId() returns a palloc'd
+  // string.
+  MemoryContext oldctx = MemoryContextSwitchTo(MessageContext);
   char *rgname = GetResGroupNameForId(groupId);
-  if (rgname == nullptr)
-    return nullptr;
-  return new std::string(rgname);
+  MemoryContextSwitchTo(oldctx);
+  return rgname ? rgname : std::string_view();
 }
 
 /**

@@ -33,7 +33,6 @@ public:
   void incr_depth() { nesting_level++; }
   void decr_depth() { nesting_level--; }
   EventSender();
-  ~EventSender();
 
 private:
   enum QueryState { UNKNOWN, SUBMIT, START, END, DONE };
@@ -42,7 +41,7 @@ private:
     QueryState state = QueryState::UNKNOWN;
     yagpcc::SetQueryReq *message = nullptr;
 
-    QueryItem(QueryState st, yagpcc::SetQueryReq *msg);
+    QueryItem(yagpcc::SetQueryReq *msg);
   };
 
   void update_query_state(QueryDesc *query_desc, QueryItem *query,

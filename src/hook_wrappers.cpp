@@ -46,6 +46,7 @@ static void ya_ic_teardown_hook(ChunkTransportState *transportStates,
 static void ya_analyze_stats_collect_hook(QueryDesc *query_desc);
 #endif
 
+ContextUniquePtr message_context;
 ContextUniquePtr backend_context;
 // Owned by the backend_context.
 static EventSender *sender = nullptr;
@@ -106,6 +107,7 @@ void hooks_deinit() {
 #endif
   stat_statements_parser_deinit();
   YagpStat::deinit();
+  message_context.reset();
   backend_context.reset();
   sender = nullptr;
 }
