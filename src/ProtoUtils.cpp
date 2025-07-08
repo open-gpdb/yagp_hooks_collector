@@ -102,7 +102,9 @@ void set_query_info(yagpcc::SetQueryReq *req) {
   if (Gp_session_role == GP_ROLE_DISPATCH) {
     auto qi = req->mutable_query_info();
     qi->set_allocated_username(get_user_name());
-    qi->set_allocated_databasename(get_db_name());
+    if (IsTransactionState()) {
+      qi->set_allocated_databasename(get_db_name());
+    }
     qi->set_allocated_rsgname(get_rg_name());
   }
 }
