@@ -17,6 +17,7 @@ extern "C" {
 #include "Config.h"
 #include "YagpStat.h"
 #include "EventSender.h"
+#include "memory/PgContext.h"
 #include "hook_wrappers.h"
 #include "stat_statements_parser/pg_stat_statements_ya_parser.h"
 
@@ -45,11 +46,14 @@ static void ya_ic_teardown_hook(ChunkTransportState *transportStates,
 static void ya_analyze_stats_collect_hook(QueryDesc *query_desc);
 #endif
 
+ContextUniquePtr backend_context;
+// Owned by the backend_context.
 static EventSender *sender = nullptr;
 
 static inline EventSender *get_sender() {
   if (!sender) {
-    sender = new EventSender();
+    Assert(backend_context);
+    sender = backend_context->pnew<EventSender>();
   }
   return sender;
 }
@@ -85,6 +89,7 @@ void hooks_init() {
   analyze_stats_collect_hook = ya_analyze_stats_collect_hook;
 #endif
   stat_statements_parser_init();
+  backend_context = ManagedMemContext::create_empty(TopMemoryContext);
 }
 
 void hooks_deinit() {
@@ -100,10 +105,9 @@ void hooks_deinit() {
   analyze_stats_collect_hook = previous_analyze_stats_collect_hook;
 #endif
   stat_statements_parser_deinit();
-  if (sender) {
-    delete sender;
-  }
   YagpStat::deinit();
+  backend_context.reset();
+  sender = nullptr;
 }
 
 void ya_ExecutorStart_hook(QueryDesc *query_desc, int eflags) {

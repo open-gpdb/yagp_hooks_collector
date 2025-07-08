@@ -20,6 +20,8 @@ extern "C" {
 #include "PgUtils.h"
 #include "ProtoUtils.h"
 
+extern ContextUniquePtr backend_context;
+
 #define need_collect_analyze()                                                 \
   (Gp_role == GP_ROLE_DISPATCH && Config::min_analyze_time() >= 0 &&           \
    Config::enable_analyze())
@@ -305,10 +307,11 @@ void EventSender::analyze_stats_collect(QueryDesc *query_desc) {
   }
 }
 
-EventSender::EventSender() {
+EventSender::EventSender()
+    : query_msgs(backend_context->get_allocator<QueryMapAllocator>()) {
   if (Config::enable_collector()) {
     try {
-      connector = new UDSConnector();
+      connector = backend_context->pnew<UDSConnector>();
     } catch (const std::exception &e) {
       ereport(INFO, (errmsg("Unable to start query tracing %s", e.what())));
     }
@@ -319,7 +322,6 @@ EventSender::EventSender() {
 }
 
 EventSender::~EventSender() {
-  delete connector;
   for (auto iter = query_msgs.begin(); iter != query_msgs.end(); ++iter) {
     delete iter->second.message;
   }

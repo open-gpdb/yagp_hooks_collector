@@ -1,5 +1,7 @@
 #pragma once
 
+#include "memory/PgContext.h"
+
 #include <memory>
 #include <unordered_map>
 #include <string>
@@ -43,14 +45,6 @@ private:
     QueryItem(QueryState st, yagpcc::SetQueryReq *msg);
   };
 
-  struct pair_hash {
-    std::size_t operator()(const std::pair<int, int> &p) const {
-      auto h1 = std::hash<int>{}(p.first);
-      auto h2 = std::hash<int>{}(p.second);
-      return h1 ^ h2;
-    }
-  };
-
   void update_query_state(QueryDesc *query_desc, QueryItem *query,
                           QueryState new_state, bool success = true);
   QueryItem *get_query_message(QueryDesc *query_desc);
@@ -66,5 +60,18 @@ private:
 #ifdef IC_TEARDOWN_HOOK
   ICStatistics ic_statistics;
 #endif
-  std::unordered_map<std::pair<int, int>, QueryItem, pair_hash> query_msgs;
+  using QueryKey = std::pair<int, int>;
+  using QueryValue = QueryItem;
+  using QueryMapAllocator =
+      PallocZeroAllocator<std::pair<const QueryKey, QueryValue>>;
+  struct pair_hash {
+    std::size_t operator()(const QueryKey &p) const {
+      auto h1 = std::hash<int>{}(p.first);
+      auto h2 = std::hash<int>{}(p.second);
+      return h1 ^ h2;
+    }
+  };
+  std::unordered_map<QueryKey, QueryValue, pair_hash, std::equal_to<QueryKey>,
+                     QueryMapAllocator>
+      query_msgs;
 };
