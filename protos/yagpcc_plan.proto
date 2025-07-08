@@ -1,8 +1,12 @@
-syntax = "proto3";
+edition = "2023";
+
+import "google/protobuf/cpp_features.proto";
 
 package yagpcc;
 option java_outer_classname = "SegmentYAGPCCP";
 option go_package = "a.yandex-team.ru/cloud/mdb/yagpcc/api/proto/common;greenplum";
+
+option features.(pb.cpp).string_type=VIEW;
 
 message MetricPlan {
     GpdbNodeType   type = 1;

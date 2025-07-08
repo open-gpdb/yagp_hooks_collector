@@ -2,6 +2,7 @@
 #include "PgUtils.h"
 #include "ProcStats.h"
 #include "Config.h"
+#include "memory/PgContext.h"
 
 #define typeid __typeid
 #define operator __operator
@@ -24,7 +25,7 @@ extern "C" {
 #undef operator
 
 #include <ctime>
-#include <string>
+#include <string_view>
 
 google::protobuf::Timestamp current_ts() {
   google::protobuf::Timestamp current_ts;
@@ -48,9 +49,9 @@ void set_segment_key(yagpcc::SegmentKey *key) {
   key->set_segindex(GpIdentity.segindex);
 }
 
-inline std::string char_to_trimmed_str(const char *str, size_t len,
-                                       size_t lim) {
-  return std::string(str, std::min(len, lim));
+inline std::string_view char_to_trimmed_str(const char *str, size_t len,
+                                            size_t lim) {
+  return std::string_view(str, std::min(len, lim));
 }
 
 void set_query_plan(yagpcc::SetQueryReq *req, QueryDesc *query_desc) {
@@ -59,31 +60,28 @@ void set_query_plan(yagpcc::SetQueryReq *req, QueryDesc *query_desc) {
     qi->set_generator(query_desc->plannedstmt->planGen == PLANGEN_OPTIMIZER
                           ? yagpcc::PlanGenerator::PLAN_GENERATOR_OPTIMIZER
                           : yagpcc::PlanGenerator::PLAN_GENERATOR_PLANNER);
-    MemoryContext oldcxt =
-        MemoryContextSwitchTo(query_desc->estate->es_query_cxt);
+    MemoryContext oldcxt = MemoryContextSwitchTo(MessageContext);
     auto es = get_explain_state(query_desc, true);
-    MemoryContextSwitchTo(oldcxt);
-    *qi->mutable_plan_text() =
-        char_to_trimmed_str(es.str->data, es.str->len, Config::max_plan_size());
+    qi->set_plan_text(char_to_trimmed_str(es.str->data, es.str->len,
+                                          Config::max_plan_size()));
     StringInfo norm_plan = gen_normplan(es.str->data);
-    *qi->mutable_template_plan_text() = char_to_trimmed_str(
-        norm_plan->data, norm_plan->len, Config::max_plan_size());
+    MemoryContextSwitchTo(oldcxt);
+    qi->set_template_plan_text(char_to_trimmed_str(
+        norm_plan->data, norm_plan->len, Config::max_plan_size()));
     qi->set_plan_id(hash_any((unsigned char *)norm_plan->data, norm_plan->len));
     qi->set_query_id(query_desc->plannedstmt->queryId);
-    pfree(es.str->data);
-    pfree(norm_plan->data);
   }
 }
 
 void set_query_text(yagpcc::SetQueryReq *req, QueryDesc *query_desc) {
   if (Gp_session_role == GP_ROLE_DISPATCH && query_desc->sourceText) {
     auto qi = req->mutable_query_info();
-    *qi->mutable_query_text() = char_to_trimmed_str(
-        query_desc->sourceText, strlen(query_desc->sourceText),
-        Config::max_text_size());
+    qi->set_query_text(char_to_trimmed_str(query_desc->sourceText,
+                                           strlen(query_desc->sourceText),
+                                           Config::max_text_size()));
     char *norm_query = gen_normquery(query_desc->sourceText);
-    *qi->mutable_template_query_text() = char_to_trimmed_str(
-        norm_query, strlen(norm_query), Config::max_text_size());
+    qi->set_template_query_text(char_to_trimmed_str(
+        norm_query, strlen(norm_query), Config::max_text_size()));
   }
 }
 
@@ -122,8 +120,8 @@ void set_qi_slice_id(yagpcc::SetQueryReq *req) {
 void set_qi_error_message(yagpcc::SetQueryReq *req) {
   auto aqi = req->mutable_add_info();
   auto error = elog_message();
-  *aqi->mutable_error_message() =
-      char_to_trimmed_str(error, strlen(error), Config::max_text_size());
+  aqi->set_error_message(
+      char_to_trimmed_str(error, strlen(error), Config::max_text_size()));
 }
 
 void set_metric_instrumentation(yagpcc::MetricInstrumentation *metrics,
@@ -234,11 +232,13 @@ void set_analyze_plan_text_json(QueryDesc *query_desc,
   if (!IsTransactionState() || !query_desc->plannedstmt) {
     return;
   }
-  MemoryContext oldcxt =
-      MemoryContextSwitchTo(query_desc->estate->es_query_cxt);
+  // Allocate analyze state in MessageContext so it stays alive up to the
+  // sending point.
+  MemoryContext oldcxt = MemoryContextSwitchTo(MessageContext);
 
   ExplainState es = get_analyze_state_json(
       query_desc, query_desc->instrument_options && Config::enable_analyze());
+  MemoryContextSwitchTo(oldcxt);
   // Remove last line break.
   if (es.str->len > 0 && es.str->data[es.str->len - 1] == '\n') {
     es.str->data[--es.str->len] = '\0';
@@ -251,7 +251,4 @@ void set_analyze_plan_text_json(QueryDesc *query_desc,
   auto trimmed_analyze =
       char_to_trimmed_str(es.str->data, es.str->len, Config::max_plan_size());
   req->mutable_query_info()->set_analyze_text(trimmed_analyze);
-
-  pfree(es.str->data);
-  MemoryContextSwitchTo(oldcxt);
 }
