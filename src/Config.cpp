@@ -1,4 +1,6 @@
 #include "Config.h"
+#include "memory/PgContext.h"
+
 #include <limits.h>
 #include <memory>
 #include <unordered_set>
@@ -19,14 +21,16 @@ static int guc_max_text_size = 1024;  // in KB
 static int guc_max_plan_size = 1024;  // in KB
 static int guc_min_analyze_time = -1; // uninitialized state
 
-static std::unique_ptr<std::unordered_set<std::string>> ignored_users_set =
-    nullptr;
+using SetStrView = std::unordered_set<std::string_view>;
+
+static std::unique_ptr<SetStrView> ignored_users_set;
 static bool ignored_users_guc_dirty = false;
 
 static void update_ignored_users(const char *new_guc_ignored_users) {
-  auto new_ignored_users_set =
-      std::make_unique<std::unordered_set<std::string>>();
+  auto new_ignored_users_set = std::make_unique<SetStrView>();
   if (new_guc_ignored_users != nullptr && new_guc_ignored_users[0] != '\0') {
+    MemoryContext oldctx;
+    oldctx = MemoryContextSwitchTo(TopMemoryContext);
     /* Need a modifiable copy of string */
     char *rawstring = pstrdup(new_guc_ignored_users);
     List *elemlist;
@@ -37,6 +41,7 @@ static void update_ignored_users(const char *new_guc_ignored_users) {
       /* syntax error in list */
       pfree(rawstring);
       list_free(elemlist);
+      MemoryContextSwitchTo(oldctx);
       ereport(
           LOG,
           (errcode(ERRCODE_SYNTAX_ERROR),
@@ -45,10 +50,17 @@ static void update_ignored_users(const char *new_guc_ignored_users) {
       return;
     }
     foreach (l, elemlist) {
-      new_ignored_users_set->insert((char *)lfirst(l));
+      char *user = pstrdup((char *)lfirst(l));
+      new_ignored_users_set->emplace(user);
     }
     pfree(rawstring);
     list_free(elemlist);
+    MemoryContextSwitchTo(oldctx);
+  }
+  if (ignored_users_set) {
+    for (std::string_view user : *ignored_users_set) {
+      pfree(const_cast<char *>(user.data()));
+    }
   }
   ignored_users_set = std::move(new_ignored_users_set);
 }
@@ -109,7 +121,7 @@ void Config::init() {
       GUC_NOT_IN_SAMPLE | GUC_GPDB_NEED_SYNC | GUC_UNIT_MS, NULL, NULL, NULL);
 }
 
-std::string Config::uds_path() { return guc_uds_path; }
+std::string_view Config::uds_path() { return guc_uds_path; }
 bool Config::enable_analyze() { return guc_enable_analyze; }
 bool Config::enable_cdbstats() { return guc_enable_cdbstats; }
 bool Config::enable_collector() { return guc_enable_collector; }
@@ -122,8 +134,7 @@ bool Config::filter_user(std::string_view username) {
   if (username.empty() || ignored_users_set == nullptr) {
     return true;
   }
-  return ignored_users_set->find(std::string(username)) !=
-         ignored_users_set->end();
+  return ignored_users_set->find(username) != ignored_users_set->end();
 }
 
 void Config::sync() {
