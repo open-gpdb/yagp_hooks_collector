@@ -77,7 +77,8 @@ public:
     if (reset) {
       init();
     }
-    T *obj = new (allocate0<T>(sizeof(T))) T(std::forward<Args>(args)...);
+    void *mem = allocate0(sizeof(T));
+    T *obj = construct_at<T>(mem, std::forward<Args>(args)...);
     // Register the destructor to be called on cleanup.
     DtorThunk dtor = [obj]() { obj->~T(); };
     dtor_thunks->push_back(std::move(dtor));
@@ -96,6 +97,16 @@ public:
   }
 
 private:
+  template <typename T, typename... Args>
+  static T *construct_at(void *mem, Args &&...args) {
+    try {
+      return new (mem) T(std::forward<Args>(args)...);
+    } catch (...) {
+      pfree(mem);
+      throw;
+    }
+  }
+
   ManagedMemContext(MemoryContext ctx);
   ~ManagedMemContext();
 
@@ -106,6 +117,7 @@ private:
   MemoryContext ctx_alloc = nullptr;
   bool reset = true;
   MemoryContextCallback context_callback = {0};
+  using DtorThunks = std::vector<DtorThunk, PallocZeroAllocator<DtorThunk>>;
   // Holds the destructors. It is itself allocated within the context.
-  std::vector<DtorThunk, PallocZeroAllocator<DtorThunk>> *dtor_thunks = nullptr;
+  DtorThunks *dtor_thunks = nullptr;
 };

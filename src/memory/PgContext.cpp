@@ -13,7 +13,7 @@ ManagedMemContext::~ManagedMemContext() {
 ContextUniquePtr ManagedMemContext::create_empty(MemoryContext ctx_alloc,
                                                  MemoryContext ctx_manager) {
   void *mem = MemoryContextAllocZero(ctx_manager, sizeof(ManagedMemContext));
-  ManagedMemContext *obj = new (mem) ManagedMemContext(ctx_alloc);
+  auto obj = construct_at<ManagedMemContext>(mem, ctx_alloc);
   return ContextUniquePtr(obj);
 }
 
@@ -24,11 +24,8 @@ void ManagedMemContext::init() {
   }
   // Allocate the vector itself inside the ctx_alloc.
   PallocZeroAllocator<DtorThunk> allocator(ctx_alloc);
-  void *vec_mem = MemoryContextAlloc(
-      ctx_alloc,
-      sizeof(std::vector<DtorThunk, PallocZeroAllocator<DtorThunk>>));
-  dtor_thunks = new (vec_mem)
-      std::vector<DtorThunk, PallocZeroAllocator<DtorThunk>>(allocator);
+  void *vec_mem = MemoryContextAlloc(ctx_alloc, sizeof(DtorThunks));
+  dtor_thunks = construct_at<DtorThunks>(vec_mem, allocator);
   // Register a callback so PG's MemoryContext Reset/Delete will call our dtors.
   context_callback.func = ManagedMemContext::reset_callback;
   context_callback.arg = this;
