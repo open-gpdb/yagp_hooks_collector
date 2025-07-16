@@ -79,7 +79,9 @@ void set_query_text(yagpcc::SetQueryReq *req, QueryDesc *query_desc) {
     qi->set_query_text(char_to_trimmed_str(query_desc->sourceText,
                                            strlen(query_desc->sourceText),
                                            Config::max_text_size()));
+    MemoryContext oldcxt = MemoryContextSwitchTo(MessageContext);
     char *norm_query = gen_normquery(query_desc->sourceText);
+    MemoryContextSwitchTo(oldcxt);
     qi->set_template_query_text(char_to_trimmed_str(
         norm_query, strlen(norm_query), Config::max_text_size()));
   }
