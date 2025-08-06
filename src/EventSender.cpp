@@ -150,7 +150,8 @@ void EventSender::collect_query_submit(QueryDesc *query_desc) {
   submit_query(query_desc);
   auto &query = get_query(query_desc);
   auto *query_msg = query.message.get();
-  *query_msg = create_query_req(yagpcc::QueryStatus::QUERY_STATUS_SUBMIT);
+  *query_msg =
+      create_query_req(query_desc, yagpcc::QueryStatus::QUERY_STATUS_SUBMIT);
   *query_msg->mutable_submit_time() = current_ts();
   set_query_info(query_msg);
   set_qi_nesting_level(query_msg, nesting_level);
@@ -230,12 +231,22 @@ void EventSender::collect_query_done(QueryDesc *query_desc,
 
   // Skip sending done message if query errored before submit.
   if (!qdesc_submitted(query_desc)) {
-    Assert(status == METRICS_QUERY_ERROR);
-    ereport(LOG, (errmsg("YAGPCC query errored before submit")));
+    if (status != METRICS_QUERY_ERROR) {
+      ereport(
+          WARNING,
+          (errmsg("YAGPCC trying to done unsubmitted and unerrored query")));
+      ereport(DEBUG3,
+              (errmsg("YAGPCC query sourceText: %s", query_desc->sourceText)));
+    }
     return;
   }
 
-  Assert(!queries.empty());
+  if (queries.empty()) {
+    ereport(WARNING, (errmsg("YAGPCC cannot find query to done")));
+    ereport(DEBUG3,
+            (errmsg("YAGPCC query sourceText: %s", query_desc->sourceText)));
+    return;
+  }
   auto &query = get_query(query_desc);
 
   bool report = need_report_nested_query() ||
@@ -354,24 +365,31 @@ void EventSender::update_query_state(QueryItem &query, QueryState new_state,
 }
 
 EventSender::QueryItem &EventSender::get_query(QueryDesc *query_desc) {
-  Assert(qdesc_submitted(query_desc));
-  auto it = queries.find(QueryKey::qdesc_to_qkey(query_desc));
-  Assert(it != queries.end());
-  // if (it == queries.end()) {
-  //   ereport(LOG, (errmsg("YAGPCC query not found despite being submitted")));
-  // }
-  return it->second;
+  if (!qdesc_submitted(query_desc)) {
+    ereport(WARNING,
+            (errmsg("YAGPCC attempting to get query that was not submitted")));
+    ereport(DEBUG3,
+            (errmsg("YAGPCC query sourceText: %s", query_desc->sourceText)));
+    throw std::runtime_error("Attempting to get query that was not submitted");
+  }
+  return queries.find(QueryKey::qdesc_to_qkey(query_desc))->second;
 }
 
 void EventSender::submit_query(QueryDesc *query_desc) {
-  Assert(query_desc->yagp_hooks_query_state == NULL);
+  if (query_desc->yagp_hooks_query_state) {
+    ereport(WARNING,
+            (errmsg("YAGPCC trying to submit already submitted query")));
+    ereport(DEBUG3,
+            (errmsg("YAGPCC query sourceText: %s", query_desc->sourceText)));
+  }
   QueryKey::register_qkey(query_desc, nesting_level);
   auto key = QueryKey::qdesc_to_qkey(query_desc);
   auto [_, inserted] = queries.emplace(key, QueryItem(QueryState::SUBMIT));
-  Assert(inserted);
-  // if (!inserted) {
-  //   ereport(LOG, (errmsg("YAGPCC duplicate submit detected")));
-  // }
+  if (!inserted) {
+    ereport(WARNING, (errmsg("YAGPCC duplicate query submit detected")));
+    ereport(DEBUG3,
+            (errmsg("YAGPCC query sourceText: %s", query_desc->sourceText)));
+  }
 }
 
 void EventSender::update_nested_counters(QueryDesc *query_desc) {
@@ -397,7 +415,12 @@ bool EventSender::qdesc_submitted(QueryDesc *query_desc) {
   }
   bool found =
       queries.find(QueryKey::qdesc_to_qkey(query_desc)) != queries.end();
-  Assert(found);
+  if (!found) {
+    ereport(WARNING,
+            (errmsg("YAGPCC query marked as submitted but not found")));
+    ereport(DEBUG3,
+            (errmsg("YAGPCC query sourceText: %s", query_desc->sourceText)));
+  }
   return found;
 }
 

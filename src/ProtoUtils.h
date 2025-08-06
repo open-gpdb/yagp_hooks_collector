@@ -17,7 +17,8 @@ void set_gp_metrics(yagpcc::GPMetrics *metrics, QueryDesc *query_desc,
                     int nested_calls, double nested_time);
 void set_ic_stats(yagpcc::MetricInstrumentation *metrics,
                   const ICStatistics *ic_statistics);
-yagpcc::SetQueryReq create_query_req(yagpcc::QueryStatus status);
+yagpcc::SetQueryReq create_query_req(QueryDesc *query_desc,
+                                     yagpcc::QueryStatus status);
 double protots_to_double(const google::protobuf::Timestamp &ts);
 void set_analyze_plan_text_json(QueryDesc *query_desc,
                                 yagpcc::SetQueryReq *message);

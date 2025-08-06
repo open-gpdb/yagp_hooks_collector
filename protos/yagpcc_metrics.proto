@@ -65,6 +65,7 @@ message QueryKey {
     int32 tmid = 1; /* A time identifier for a particular query. All records associated with the query will have the same tmid. */
     int32 ssid = 2; /* The session id as shown by gp_session_id. All records associated with the query will have the same ssid */
     int32 ccnt = 3; /* The command number within this session as shown by gp_command_count. All records associated with the query will have the same ccnt */
+    uint64 query_desc_ptr = 4;
 }
 
 message SegmentKey {
