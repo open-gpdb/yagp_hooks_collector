@@ -56,9 +56,10 @@ std::string *get_rg_name() {
  */
 
 bool is_top_level_query(QueryDesc *query_desc, int nesting_level) {
-  return (query_desc->yagp_hooks_query_state &&
-          query_desc->yagp_hooks_query_state->nesting_level == 0) ||
-         nesting_level == 0;
+  if (query_desc->yagp_hooks_query_state == NULL) {
+    return nesting_level == 0;
+  }
+  return query_desc->yagp_hooks_query_state->nesting_level == 0;
 }
 
 bool nesting_is_valid(QueryDesc *query_desc, int nesting_level) {

@@ -58,7 +58,16 @@ void EventSender::query_metrics_collect(QueryMetricsStatus status, void *arg) {
 }
 
 void EventSender::executor_before_start(QueryDesc *query_desc, int eflags) {
-  if (!connector || !need_collect(query_desc, nesting_level)) {
+  if (!connector) {
+    return;
+  }
+  if (filter_query(query_desc)) {
+    return;
+  }
+  if (!qdesc_submitted(query_desc)) {
+    collect_query_submit(query_desc);
+  }
+  if (!need_collect(query_desc, nesting_level)) {
     return;
   }
   if (Gp_role == GP_ROLE_DISPATCH && Config::enable_analyze() &&
@@ -84,10 +93,6 @@ void EventSender::executor_after_start(QueryDesc *query_desc, int /* eflags*/) {
   }
   if (Gp_role != GP_ROLE_DISPATCH && Gp_role != GP_ROLE_EXECUTE) {
     return;
-  }
-  if (!qdesc_submitted(query_desc)) {
-    ereport(LOG, (errmsg("YAGPCC sumbitting query after executor start")));
-    collect_query_submit(query_desc);
   }
   auto &query = get_query(query_desc);
   auto query_msg = query.message.get();
@@ -139,11 +144,17 @@ void EventSender::collect_query_submit(QueryDesc *query_desc) {
   if (!connector) {
     return;
   }
+  Config::sync();
+  // Register qkey for a nested query we won't report,
+  // so we can detect nesting_level > 0 and skip reporting at end/done.
+  if (!need_report_nested_query() && nesting_level > 0) {
+    QueryKey::register_qkey(query_desc, nesting_level);
+    return;
+  }
   if (is_top_level_query(query_desc, nesting_level)) {
     nested_timing = 0;
     nested_calls = 0;
   }
-  Config::sync();
   if (!need_collect(query_desc, nesting_level)) {
     return;
   }
@@ -413,15 +424,7 @@ bool EventSender::qdesc_submitted(QueryDesc *query_desc) {
   if (query_desc->yagp_hooks_query_state == NULL) {
     return false;
   }
-  bool found =
-      queries.find(QueryKey::qdesc_to_qkey(query_desc)) != queries.end();
-  if (!found) {
-    ereport(WARNING,
-            (errmsg("YAGPCC query marked as submitted but not found")));
-    ereport(DEBUG3,
-            (errmsg("YAGPCC query sourceText: %s", query_desc->sourceText)));
-  }
-  return found;
+  return queries.find(QueryKey::qdesc_to_qkey(query_desc)) != queries.end();
 }
 
 EventSender::QueryItem::QueryItem(QueryState st)
