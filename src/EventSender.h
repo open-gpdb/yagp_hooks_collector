@@ -48,7 +48,7 @@ struct QueryKey {
     query_desc->yagp_hooks_query_state->query_desc_addr = (uintptr_t)query_desc;
   }
 
-  static QueryKey qdesc_to_qkey(QueryDesc *query_desc) {
+  static QueryKey from_qdesc(QueryDesc *query_desc) {
     return {
         .tmid = query_desc->yagp_hooks_query_state->tmid,
         .ssid = query_desc->yagp_hooks_query_state->ssid,

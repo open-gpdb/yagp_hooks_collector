@@ -243,9 +243,8 @@ void EventSender::collect_query_done(QueryDesc *query_desc,
   // Skip sending done message if query errored before submit.
   if (!qdesc_submitted(query_desc)) {
     if (status != METRICS_QUERY_ERROR) {
-      ereport(
-          WARNING,
-          (errmsg("YAGPCC trying to done unsubmitted and unerrored query")));
+      ereport(WARNING, (errmsg("YAGPCC trying to process DONE hook for "
+                               "unsubmitted and unerrored query")));
       ereport(DEBUG3,
               (errmsg("YAGPCC query sourceText: %s", query_desc->sourceText)));
     }
@@ -253,7 +252,7 @@ void EventSender::collect_query_done(QueryDesc *query_desc,
   }
 
   if (queries.empty()) {
-    ereport(WARNING, (errmsg("YAGPCC cannot find query to done")));
+    ereport(WARNING, (errmsg("YAGPCC cannot find query to process DONE hook")));
     ereport(DEBUG3,
             (errmsg("YAGPCC query sourceText: %s", query_desc->sourceText)));
     return;
@@ -268,7 +267,7 @@ void EventSender::collect_query_done(QueryDesc *query_desc,
   if (need_report_nested_query())
     update_nested_counters(query_desc);
 
-  queries.erase(QueryKey::qdesc_to_qkey(query_desc));
+  queries.erase(QueryKey::from_qdesc(query_desc));
   pfree(query_desc->yagp_hooks_query_state);
   query_desc->yagp_hooks_query_state = NULL;
 }
@@ -383,7 +382,7 @@ EventSender::QueryItem &EventSender::get_query(QueryDesc *query_desc) {
             (errmsg("YAGPCC query sourceText: %s", query_desc->sourceText)));
     throw std::runtime_error("Attempting to get query that was not submitted");
   }
-  return queries.find(QueryKey::qdesc_to_qkey(query_desc))->second;
+  return queries.find(QueryKey::from_qdesc(query_desc))->second;
 }
 
 void EventSender::submit_query(QueryDesc *query_desc) {
@@ -394,7 +393,7 @@ void EventSender::submit_query(QueryDesc *query_desc) {
             (errmsg("YAGPCC query sourceText: %s", query_desc->sourceText)));
   }
   QueryKey::register_qkey(query_desc, nesting_level);
-  auto key = QueryKey::qdesc_to_qkey(query_desc);
+  auto key = QueryKey::from_qdesc(query_desc);
   auto [_, inserted] = queries.emplace(key, QueryItem(QueryState::SUBMIT));
   if (!inserted) {
     ereport(WARNING, (errmsg("YAGPCC duplicate query submit detected")));
@@ -424,7 +423,7 @@ bool EventSender::qdesc_submitted(QueryDesc *query_desc) {
   if (query_desc->yagp_hooks_query_state == NULL) {
     return false;
   }
-  return queries.find(QueryKey::qdesc_to_qkey(query_desc)) != queries.end();
+  return queries.find(QueryKey::from_qdesc(query_desc)) != queries.end();
 }
 
 EventSender::QueryItem::QueryItem(QueryState st)
