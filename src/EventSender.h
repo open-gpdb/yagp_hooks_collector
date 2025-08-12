@@ -37,24 +37,24 @@ struct QueryKey {
   }
 
   static void register_qkey(QueryDesc *query_desc, size_t nesting_level) {
-    query_desc->yagp_hooks_query_state =
-        (YagpHooksQueryState *)ya_gpdb::palloc0(sizeof(YagpHooksQueryState));
+    query_desc->yagp_query_key =
+        (YagpQueryKey *)ya_gpdb::palloc0(sizeof(YagpQueryKey));
     int32 tmid;
     gpmon_gettmid(&tmid);
-    query_desc->yagp_hooks_query_state->tmid = tmid;
-    query_desc->yagp_hooks_query_state->ssid = gp_session_id;
-    query_desc->yagp_hooks_query_state->ccnt = gp_command_count;
-    query_desc->yagp_hooks_query_state->nesting_level = nesting_level;
-    query_desc->yagp_hooks_query_state->query_desc_addr = (uintptr_t)query_desc;
+    query_desc->yagp_query_key->tmid = tmid;
+    query_desc->yagp_query_key->ssid = gp_session_id;
+    query_desc->yagp_query_key->ccnt = gp_command_count;
+    query_desc->yagp_query_key->nesting_level = nesting_level;
+    query_desc->yagp_query_key->query_desc_addr = (uintptr_t)query_desc;
   }
 
   static QueryKey from_qdesc(QueryDesc *query_desc) {
     return {
-        .tmid = query_desc->yagp_hooks_query_state->tmid,
-        .ssid = query_desc->yagp_hooks_query_state->ssid,
-        .ccnt = query_desc->yagp_hooks_query_state->ccnt,
-        .nesting_level = query_desc->yagp_hooks_query_state->nesting_level,
-        .query_desc_addr = query_desc->yagp_hooks_query_state->query_desc_addr,
+        .tmid = query_desc->yagp_query_key->tmid,
+        .ssid = query_desc->yagp_query_key->ssid,
+        .ccnt = query_desc->yagp_query_key->ccnt,
+        .nesting_level = query_desc->yagp_query_key->nesting_level,
+        .query_desc_addr = query_desc->yagp_query_key->query_desc_addr,
     };
   }
 };

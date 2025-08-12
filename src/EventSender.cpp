@@ -268,8 +268,8 @@ void EventSender::collect_query_done(QueryDesc *query_desc,
     update_nested_counters(query_desc);
 
   queries.erase(QueryKey::from_qdesc(query_desc));
-  pfree(query_desc->yagp_hooks_query_state);
-  query_desc->yagp_hooks_query_state = NULL;
+  pfree(query_desc->yagp_query_key);
+  query_desc->yagp_query_key = NULL;
 }
 
 void EventSender::ic_metrics_collect() {
@@ -386,7 +386,7 @@ EventSender::QueryItem &EventSender::get_query(QueryDesc *query_desc) {
 }
 
 void EventSender::submit_query(QueryDesc *query_desc) {
-  if (query_desc->yagp_hooks_query_state) {
+  if (query_desc->yagp_query_key) {
     ereport(WARNING,
             (errmsg("YAGPCC trying to submit already submitted query")));
     ereport(DEBUG3,
@@ -420,7 +420,7 @@ void EventSender::update_nested_counters(QueryDesc *query_desc) {
 }
 
 bool EventSender::qdesc_submitted(QueryDesc *query_desc) {
-  if (query_desc->yagp_hooks_query_state == NULL) {
+  if (query_desc->yagp_query_key == NULL) {
     return false;
   }
   return queries.find(QueryKey::from_qdesc(query_desc)) != queries.end();
