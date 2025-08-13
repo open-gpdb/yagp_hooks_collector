@@ -33,13 +33,12 @@ google::protobuf::Timestamp current_ts() {
   return current_ts;
 }
 
-void set_query_key(QueryDesc *query_desc, yagpcc::QueryKey *key) {
+void set_query_key(yagpcc::QueryKey *key) {
   key->set_ccnt(gp_command_count);
   key->set_ssid(gp_session_id);
   int32 tmid = 0;
   gpmon_gettmid(&tmid);
   key->set_tmid(tmid);
-  key->set_query_desc_ptr((uintptr_t)query_desc);
 }
 
 void set_segment_key(yagpcc::SegmentKey *key) {
@@ -214,12 +213,11 @@ void set_ic_stats(yagpcc::MetricInstrumentation *metrics,
 #endif
 }
 
-yagpcc::SetQueryReq create_query_req(QueryDesc *query_desc,
-                                     yagpcc::QueryStatus status) {
+yagpcc::SetQueryReq create_query_req(yagpcc::QueryStatus status) {
   yagpcc::SetQueryReq req;
   req.set_query_status(status);
   *req.mutable_datetime() = current_ts();
-  set_query_key(query_desc, req.mutable_query_key());
+  set_query_key(req.mutable_query_key());
   set_segment_key(req.mutable_segment_key());
   return req;
 }

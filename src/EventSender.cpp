@@ -161,8 +161,7 @@ void EventSender::collect_query_submit(QueryDesc *query_desc) {
   submit_query(query_desc);
   auto &query = get_query(query_desc);
   auto *query_msg = query.message.get();
-  *query_msg =
-      create_query_req(query_desc, yagpcc::QueryStatus::QUERY_STATUS_SUBMIT);
+  *query_msg = create_query_req(yagpcc::QueryStatus::QUERY_STATUS_SUBMIT);
   *query_msg->mutable_submit_time() = current_ts();
   set_query_info(query_msg);
   set_qi_nesting_level(query_msg, nesting_level);
