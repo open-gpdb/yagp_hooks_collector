@@ -342,7 +342,7 @@ EventSender::EventSender() {
 
 EventSender::~EventSender() {
   for (const auto &[qkey, _] : queries) {
-    ereport(DEBUG3,
+    ereport(LOG,
             (errmsg("YAGPCC query with missing done event: "
                     "tmid=%d ssid=%d ccnt=%d nlvl=%d",
                     qkey.tmid, qkey.ssid, qkey.ccnt, qkey.nesting_level)));
