@@ -28,7 +28,7 @@ select * from test_hash_dist where id = 1;
 
 SET yagpcc.log_to_table TO FALSE;
 -- Should see 8 rows.
-SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
 SELECT yagp_truncate_log() IS NOT NULL AS t;
 
 SET yagpcc.log_to_table TO TRUE;
@@ -73,7 +73,7 @@ SET yagpcc.log_to_table TO FALSE;
 DROP TABLE test_partial_dist;
 SET allow_system_table_mods = OFF;
 -- Should see 12 rows.
-SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
 SELECT yagp_truncate_log() IS NOT NULL AS t;
 
 DROP FUNCTION yagp_status_order(text);

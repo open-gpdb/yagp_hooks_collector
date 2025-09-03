@@ -10,7 +10,6 @@ extern void yagp_functions_reset();
 extern Datum yagp_functions_get(FunctionCallInfo fcinfo);
 
 extern void init_log();
-extern Datum select_log(FunctionCallInfo fcinfo);
 extern void truncate_log();
 
 #ifdef __cplusplus

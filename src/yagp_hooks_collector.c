@@ -11,7 +11,6 @@ void _PG_fini(void);
 PG_FUNCTION_INFO_V1(yagp_stat_messages_reset);
 PG_FUNCTION_INFO_V1(yagp_stat_messages);
 PG_FUNCTION_INFO_V1(yagp_init_log);
-PG_FUNCTION_INFO_V1(yagp_select_log);
 PG_FUNCTION_INFO_V1(yagp_truncate_log);
 
 void _PG_init(void) {
@@ -39,8 +38,6 @@ Datum yagp_init_log(PG_FUNCTION_ARGS) {
   init_log();
   PG_RETURN_VOID();
 }
-
-Datum yagp_select_log(PG_FUNCTION_ARGS) { return select_log(fcinfo); }
 
 Datum yagp_truncate_log(PG_FUNCTION_ARGS) {
   truncate_log();

@@ -27,17 +27,17 @@ select * from test_hash_dist where id = 1;
 
 SET yagpcc.log_to_table TO FALSE;
 -- Should see 8 rows.
-SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
- dbid | ccnt |                 query_text                 |    query_status     
-------+------+--------------------------------------------+---------------------
-    1 |   12 | select * from test_hash_dist where id = 1; | QUERY_STATUS_SUBMIT
-    1 |   12 |                                            | QUERY_STATUS_START
-    1 |   12 |                                            | QUERY_STATUS_END
-    1 |   12 |                                            | QUERY_STATUS_DONE
-    3 |   12 |                                            | QUERY_STATUS_SUBMIT
-    3 |   12 |                                            | QUERY_STATUS_START
-    3 |   12 |                                            | QUERY_STATUS_END
-    3 |   12 |                                            | QUERY_STATUS_DONE
+SELECT ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+ ccnt |                 query_text                 |    query_status     
+------+--------------------------------------------+---------------------
+   12 | select * from test_hash_dist where id = 1; | QUERY_STATUS_SUBMIT
+   12 |                                            | QUERY_STATUS_START
+   12 |                                            | QUERY_STATUS_END
+   12 |                                            | QUERY_STATUS_DONE
+   12 |                                            | QUERY_STATUS_SUBMIT
+   12 |                                            | QUERY_STATUS_START
+   12 |                                            | QUERY_STATUS_END
+   12 |                                            | QUERY_STATUS_DONE
 (8 rows)
 
 SELECT yagp_truncate_log() IS NOT NULL AS t;
@@ -144,21 +144,21 @@ SET yagpcc.log_to_table TO FALSE;
 DROP TABLE test_partial_dist;
 SET allow_system_table_mods = OFF;
 -- Should see 12 rows.
-SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
- dbid | ccnt |               query_text                |    query_status     
-------+------+-----------------------------------------+---------------------
-    1 |   55 | SELECT COUNT(*) FROM test_partial_dist; | QUERY_STATUS_SUBMIT
-    1 |   55 |                                         | QUERY_STATUS_START
-    1 |   55 |                                         | QUERY_STATUS_END
-    1 |   55 |                                         | QUERY_STATUS_DONE
-    2 |   55 |                                         | QUERY_STATUS_SUBMIT
-    2 |   55 |                                         | QUERY_STATUS_START
-    2 |   55 |                                         | QUERY_STATUS_END
-    2 |   55 |                                         | QUERY_STATUS_DONE
-    3 |   55 |                                         | QUERY_STATUS_SUBMIT
-    3 |   55 |                                         | QUERY_STATUS_START
-    3 |   55 |                                         | QUERY_STATUS_END
-    3 |   55 |                                         | QUERY_STATUS_DONE
+SELECT ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+ ccnt |               query_text                |    query_status     
+------+-----------------------------------------+---------------------
+   55 | SELECT COUNT(*) FROM test_partial_dist; | QUERY_STATUS_SUBMIT
+   55 |                                         | QUERY_STATUS_START
+   55 |                                         | QUERY_STATUS_END
+   55 |                                         | QUERY_STATUS_DONE
+   55 |                                         | QUERY_STATUS_SUBMIT
+   55 |                                         | QUERY_STATUS_START
+   55 |                                         | QUERY_STATUS_END
+   55 |                                         | QUERY_STATUS_DONE
+   55 |                                         | QUERY_STATUS_SUBMIT
+   55 |                                         | QUERY_STATUS_START
+   55 |                                         | QUERY_STATUS_END
+   55 |                                         | QUERY_STATUS_DONE
 (12 rows)
 
 SELECT yagp_truncate_log() IS NOT NULL AS t;

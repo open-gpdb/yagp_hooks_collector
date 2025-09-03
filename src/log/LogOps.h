@@ -18,9 +18,6 @@ extern "C" {
  */
 void init_log();
 
-/* SELECT * FROM __yagp.log */
-Datum select_log(PG_FUNCTION_ARGS);
-
 /* TRUNCATE __yagp.log */
 void truncate_log();
 }
