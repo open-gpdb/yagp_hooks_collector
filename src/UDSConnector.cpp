@@ -2,6 +2,7 @@
 #include "Config.h"
 #include "YagpStat.h"
 #include "memory/gpdbwrappers.h"
+#include "log/LogOps.h"
 
 #include <string>
 #include <unistd.h>
@@ -28,6 +29,10 @@ static void inline log_tracing_failure(const yagpcc::SetQueryReq &req,
 
 bool UDSConnector::report_query(const yagpcc::SetQueryReq &req,
                                 const std::string &event) {
+  if (Config::log_to_table()) {
+    insert_log(req);
+  }
+
   sockaddr_un address;
   address.sun_family = AF_UNIX;
   std::string uds_path = Config::uds_path();

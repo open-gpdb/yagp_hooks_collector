@@ -1,0 +1,171 @@
+CREATE EXTENSION yagp_hooks_collector;
+CREATE OR REPLACE FUNCTION yagp_status_order(status text)
+RETURNS integer
+AS $$
+BEGIN
+    RETURN CASE status
+        WHEN 'QUERY_STATUS_SUBMIT' THEN 1
+        WHEN 'QUERY_STATUS_START' THEN 2
+        WHEN 'QUERY_STATUS_END' THEN 3
+        WHEN 'QUERY_STATUS_DONE' THEN 4
+        ELSE 999
+    END;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+SET yagpcc.enable TO TRUE;
+SET yagpcc.report_nested_queries TO TRUE;
+-- Hash distributed table
+CREATE TABLE test_hash_dist (id int) DISTRIBUTED BY (id);
+INSERT INTO test_hash_dist SELECT 1;
+SET yagpcc.log_to_table TO TRUE;
+-- Direct dispatch is used here, only one segment is scanned.
+select * from test_hash_dist where id = 1;
+ id 
+----
+  1
+(1 row)
+
+SET yagpcc.log_to_table TO FALSE;
+-- Should see 8 rows.
+SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+ dbid | ccnt |                 query_text                 |    query_status     
+------+------+--------------------------------------------+---------------------
+    1 |   12 | select * from test_hash_dist where id = 1; | QUERY_STATUS_SUBMIT
+    1 |   12 |                                            | QUERY_STATUS_START
+    1 |   12 |                                            | QUERY_STATUS_END
+    1 |   12 |                                            | QUERY_STATUS_DONE
+    3 |   12 |                                            | QUERY_STATUS_SUBMIT
+    3 |   12 |                                            | QUERY_STATUS_START
+    3 |   12 |                                            | QUERY_STATUS_END
+    3 |   12 |                                            | QUERY_STATUS_DONE
+(8 rows)
+
+SELECT yagp_truncate_log() IS NOT NULL AS t;
+ t 
+---
+ t
+(1 row)
+
+SET yagpcc.log_to_table TO TRUE;
+-- Scan all segments.
+select * from test_hash_dist;
+ id 
+----
+  1
+(1 row)
+
+DROP TABLE test_hash_dist;
+SET yagpcc.log_to_table TO FALSE;
+SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+ dbid | ccnt |          query_text           |    query_status     
+------+------+-------------------------------+---------------------
+    1 |   22 | select * from test_hash_dist; | QUERY_STATUS_SUBMIT
+    1 |   22 |                               | QUERY_STATUS_START
+    1 |   22 |                               | QUERY_STATUS_END
+    1 |   22 |                               | QUERY_STATUS_DONE
+    2 |   22 |                               | QUERY_STATUS_SUBMIT
+    2 |   22 |                               | QUERY_STATUS_START
+    2 |   22 |                               | QUERY_STATUS_END
+    2 |   22 |                               | QUERY_STATUS_DONE
+    3 |   22 |                               | QUERY_STATUS_SUBMIT
+    3 |   22 |                               | QUERY_STATUS_START
+    3 |   22 |                               | QUERY_STATUS_END
+    3 |   22 |                               | QUERY_STATUS_DONE
+    4 |   22 |                               | QUERY_STATUS_SUBMIT
+    4 |   22 |                               | QUERY_STATUS_START
+    4 |   22 |                               | QUERY_STATUS_END
+    4 |   22 |                               | QUERY_STATUS_DONE
+(16 rows)
+
+SELECT yagp_truncate_log() IS NOT NULL AS t;
+ t 
+---
+ t
+(1 row)
+
+-- Replicated table
+CREATE FUNCTION force_segments() RETURNS SETOF text AS $$
+BEGIN
+  RETURN NEXT 'seg';
+END;
+$$ LANGUAGE plpgsql VOLATILE EXECUTE ON ALL SEGMENTS;
+CREATE TABLE test_replicated (id int) DISTRIBUTED REPLICATED;
+INSERT INTO test_replicated SELECT 1;
+SET yagpcc.log_to_table TO TRUE;
+SELECT COUNT(*) FROM test_replicated, force_segments();
+ count 
+-------
+     3
+(1 row)
+
+DROP TABLE test_replicated;
+DROP FUNCTION force_segments();
+SET yagpcc.log_to_table TO FALSE;
+SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+ dbid | ccnt |                       query_text                        |    query_status     
+------+------+---------------------------------------------------------+---------------------
+    1 |   37 | SELECT COUNT(*) FROM test_replicated, force_segments(); | QUERY_STATUS_SUBMIT
+    1 |   37 |                                                         | QUERY_STATUS_START
+    1 |   37 |                                                         | QUERY_STATUS_END
+    1 |   37 |                                                         | QUERY_STATUS_DONE
+    2 |   37 |                                                         | QUERY_STATUS_SUBMIT
+    2 |   37 |                                                         | QUERY_STATUS_START
+    2 |   37 |                                                         | QUERY_STATUS_END
+    2 |   37 |                                                         | QUERY_STATUS_DONE
+    3 |   37 |                                                         | QUERY_STATUS_SUBMIT
+    3 |   37 |                                                         | QUERY_STATUS_START
+    3 |   37 |                                                         | QUERY_STATUS_END
+    3 |   37 |                                                         | QUERY_STATUS_DONE
+    4 |   37 |                                                         | QUERY_STATUS_SUBMIT
+    4 |   37 |                                                         | QUERY_STATUS_START
+    4 |   37 |                                                         | QUERY_STATUS_END
+    4 |   37 |                                                         | QUERY_STATUS_DONE
+(16 rows)
+
+SELECT yagp_truncate_log() IS NOT NULL AS t;
+ t 
+---
+ t
+(1 row)
+
+-- Partially distributed table (2 numsegments)
+SET allow_system_table_mods = ON;
+CREATE TABLE test_partial_dist (id int, data text) DISTRIBUTED BY (id);
+UPDATE gp_distribution_policy SET numsegments = 2 WHERE localoid = 'test_partial_dist'::regclass;
+INSERT INTO test_partial_dist SELECT * FROM generate_series(1, 100);
+SET yagpcc.log_to_table TO TRUE;
+SELECT COUNT(*) FROM test_partial_dist;
+ count 
+-------
+   100
+(1 row)
+
+SET yagpcc.log_to_table TO FALSE;
+DROP TABLE test_partial_dist;
+SET allow_system_table_mods = OFF;
+-- Should see 12 rows.
+SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+ dbid | ccnt |               query_text                |    query_status     
+------+------+-----------------------------------------+---------------------
+    1 |   55 | SELECT COUNT(*) FROM test_partial_dist; | QUERY_STATUS_SUBMIT
+    1 |   55 |                                         | QUERY_STATUS_START
+    1 |   55 |                                         | QUERY_STATUS_END
+    1 |   55 |                                         | QUERY_STATUS_DONE
+    2 |   55 |                                         | QUERY_STATUS_SUBMIT
+    2 |   55 |                                         | QUERY_STATUS_START
+    2 |   55 |                                         | QUERY_STATUS_END
+    2 |   55 |                                         | QUERY_STATUS_DONE
+    3 |   55 |                                         | QUERY_STATUS_SUBMIT
+    3 |   55 |                                         | QUERY_STATUS_START
+    3 |   55 |                                         | QUERY_STATUS_END
+    3 |   55 |                                         | QUERY_STATUS_DONE
+(12 rows)
+
+SELECT yagp_truncate_log() IS NOT NULL AS t;
+ t 
+---
+ t
+(1 row)
+
+DROP FUNCTION yagp_status_order(text);
+DROP EXTENSION yagp_hooks_collector;

@@ -14,5 +14,6 @@ public:
   static size_t max_text_size();
   static size_t max_plan_size();
   static int min_analyze_time();
+  static bool log_to_table();
   static void sync();
 };
