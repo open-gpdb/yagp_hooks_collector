@@ -31,17 +31,6 @@ TupleDesc DescribeTuple() {
   return tupdesc;
 }
 
-HeapTuple CopyTuple(HeapTuple tuple, TupleDesc tuple_desc) {
-  Datum values[natts_yagp_log];
-  bool nulls[natts_yagp_log];
-
-  memset(nulls, false, sizeof(nulls));
-  memset(values, 0, sizeof(values));
-
-  heap_deform_tuple(tuple, tuple_desc, values, nulls);
-  return heap_form_tuple(tuple_desc, values, nulls);
-}
-
 Datum protots_to_timestamptz(const google::protobuf::Timestamp &ts) {
   TimestampTz pgtimestamp =
       (TimestampTz)ts.seconds() * USECS_PER_SEC + (ts.nanos() / 1000);

@@ -84,7 +84,7 @@ RETURNS void
 AS 'MODULE_PATHNAME', 'yagp_truncate_log'
 LANGUAGE C STRICT VOLATILE EXECUTE ON ALL SEGMENTS;
 
-CREATE OR REPLACE FUNCTION yagp_truncate_log()
+CREATE FUNCTION yagp_truncate_log()
 RETURNS void AS $$
 BEGIN
     PERFORM __yagp_truncate_log_on_master();

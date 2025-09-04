@@ -30,7 +30,7 @@ static void inline log_tracing_failure(const yagpcc::SetQueryReq &req,
 bool UDSConnector::report_query(const yagpcc::SetQueryReq &req,
                                 const std::string &event) {
   if (Config::log_to_table()) {
-    insert_log(req);
+    ya_gpdb::insert_log(req);
   }
 
   sockaddr_un address;

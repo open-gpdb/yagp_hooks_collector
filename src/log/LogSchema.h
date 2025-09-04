@@ -143,8 +143,6 @@ get_protoField_logDescIdx_map();
 
 TupleDesc DescribeTuple();
 
-HeapTuple CopyTuple(HeapTuple tuple, TupleDesc tuple_desc);
-
 Datum protots_to_timestamptz(const google::protobuf::Timestamp &ts);
 
 Datum field_to_datum(const google::protobuf::FieldDescriptor *field,
