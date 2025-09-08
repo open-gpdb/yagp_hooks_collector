@@ -29,7 +29,7 @@ inline constexpr std::string_view log_relname = "__log";
 struct LogDesc {
   std::string_view pg_att_name;
   std::string_view proto_field_name;
-  Oid oid;
+  Oid type_oid;
 };
 
 /*
@@ -119,7 +119,7 @@ inline constexpr std::array log_tbl_desc = {
  LogDesc{"ccnt",                "query_key.ccnt",                 INT4OID},  
  /* 4-byte aligned types - Segment Key */  
  LogDesc{"dbid",                "segment_key.dbid",               INT4OID},  
- LogDesc{"segment_index",       "segment_key.segindex",           INT4OID},  
+ LogDesc{"segid",               "segment_key.segindex",           INT4OID},  
  LogDesc{"spill_filecount",     "query_metrics.spill.fileCount",  INT4OID},  
  /* Variable-length types - Query Info */  
  LogDesc{"generator",           "query_info.generator",           TEXTOID},  
@@ -139,7 +139,7 @@ inline constexpr std::array log_tbl_desc = {
 inline constexpr size_t natts_yagp_log = log_tbl_desc.size();
 
 const std::unordered_map<std::string_view, size_t> &
-get_protoField_logDescIdx_map();
+proto_name_to_col_idx();
 
 TupleDesc DescribeTuple();
 

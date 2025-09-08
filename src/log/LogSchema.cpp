@@ -5,18 +5,18 @@
 #include "LogSchema.h"
 
 const std::unordered_map<std::string_view, size_t> &
-get_protoField_logDescIdx_map() {
-  static const auto create_protoField_logDescIdx = [] {
-    std::unordered_map<std::string_view, size_t> protoField_logDescIdx;
-    protoField_logDescIdx.reserve(log_tbl_desc.size());
+proto_name_to_col_idx() {
+  static const auto name_col_idx = [] {
+    std::unordered_map<std::string_view, size_t> map;
+    map.reserve(log_tbl_desc.size());
 
     for (size_t idx = 0; idx < natts_yagp_log; ++idx) {
-      protoField_logDescIdx.emplace(log_tbl_desc[idx].proto_field_name, idx);
+      map.emplace(log_tbl_desc[idx].proto_field_name, idx);
     }
 
-    return protoField_logDescIdx;
+    return map;
   }();
-  return create_protoField_logDescIdx;
+  return name_col_idx;
 }
 
 TupleDesc DescribeTuple() {
@@ -24,7 +24,7 @@ TupleDesc DescribeTuple() {
 
   for (size_t anum = 1; anum <= natts_yagp_log; ++anum) {
     TupleDescInitEntry(tupdesc, anum, log_tbl_desc[anum - 1].pg_att_name.data(),
-                       log_tbl_desc[anum - 1].oid, -1 /* typmod */,
+                       log_tbl_desc[anum - 1].type_oid, -1 /* typmod */,
                        0 /* attdim */);
   }
 
@@ -73,10 +73,10 @@ void process_field(const google::protobuf::FieldDescriptor *field,
                    const google::protobuf::Message &msg,
                    const std::string &field_name, Datum *values, bool *nulls) {
 
-  auto protoField_logDescIdx = get_protoField_logDescIdx_map();
-  auto it = protoField_logDescIdx.find(field_name);
+  auto proto_idx_map = proto_name_to_col_idx();
+  auto it = proto_idx_map.find(field_name);
 
-  if (it == protoField_logDescIdx.end()) {
+  if (it == proto_idx_map.end()) {
     ereport(NOTICE,
             (errmsg("YAGPCC protobuf field %s is not registered in log table",
                     field_name.c_str())));

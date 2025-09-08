@@ -17,7 +17,7 @@ SET yagpcc.report_nested_queries TO TRUE;
 -- Hash distributed table
 CREATE TABLE test_hash_dist (id int) DISTRIBUTED BY (id);
 INSERT INTO test_hash_dist SELECT 1;
-SET yagpcc.log_to_table TO TRUE;
+SET yagpcc.logging_mode to 'TBL';
 SET optimizer_enable_direct_dispatch TO TRUE;
 -- Direct dispatch is used here, only one segment is scanned.
 select * from test_hash_dist where id = 1;
@@ -27,19 +27,19 @@ select * from test_hash_dist where id = 1;
 (1 row)
 
 RESET optimizer_enable_direct_dispatch;
-SET yagpcc.log_to_table TO FALSE;
+RESET yagpcc.logging_mode;
 -- Should see 8 rows.
-SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
- dbid | ccnt |                 query_text                 |    query_status     
-------+------+--------------------------------------------+---------------------
-    1 |   13 | select * from test_hash_dist where id = 1; | QUERY_STATUS_SUBMIT
-    1 |   13 |                                            | QUERY_STATUS_START
-    1 |   13 |                                            | QUERY_STATUS_END
-    1 |   13 |                                            | QUERY_STATUS_DONE
-    3 |   13 |                                            | QUERY_STATUS_SUBMIT
-    3 |   13 |                                            | QUERY_STATUS_START
-    3 |   13 |                                            | QUERY_STATUS_END
-    3 |   13 |                                            | QUERY_STATUS_DONE
+SELECT segid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY segid, ccnt, yagp_status_order(query_status) ASC;
+ segid | ccnt |                 query_text                 |    query_status     
+-------+------+--------------------------------------------+---------------------
+    -1 |   13 | select * from test_hash_dist where id = 1; | QUERY_STATUS_SUBMIT
+    -1 |   13 | select * from test_hash_dist where id = 1; | QUERY_STATUS_START
+    -1 |   13 | select * from test_hash_dist where id = 1; | QUERY_STATUS_END
+    -1 |   13 | select * from test_hash_dist where id = 1; | QUERY_STATUS_DONE
+     1 |   13 |                                            | QUERY_STATUS_SUBMIT
+     1 |   13 |                                            | QUERY_STATUS_START
+     1 |   13 |                                            | QUERY_STATUS_END
+     1 |   13 |                                            | QUERY_STATUS_DONE
 (8 rows)
 
 SELECT yagpcc.truncate_log() IS NOT NULL AS t;
@@ -48,7 +48,7 @@ SELECT yagpcc.truncate_log() IS NOT NULL AS t;
  t
 (1 row)
 
-SET yagpcc.log_to_table TO TRUE;
+SET yagpcc.logging_mode to 'TBL';
 -- Scan all segments.
 select * from test_hash_dist;
  id 
@@ -57,26 +57,26 @@ select * from test_hash_dist;
 (1 row)
 
 DROP TABLE test_hash_dist;
-SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
- dbid | ccnt |          query_text           |    query_status     
-------+------+-------------------------------+---------------------
-    1 |   24 | select * from test_hash_dist; | QUERY_STATUS_SUBMIT
-    1 |   24 |                               | QUERY_STATUS_START
-    1 |   24 |                               | QUERY_STATUS_END
-    1 |   24 |                               | QUERY_STATUS_DONE
-    2 |   24 |                               | QUERY_STATUS_SUBMIT
-    2 |   24 |                               | QUERY_STATUS_START
-    2 |   24 |                               | QUERY_STATUS_END
-    2 |   24 |                               | QUERY_STATUS_DONE
-    3 |   24 |                               | QUERY_STATUS_SUBMIT
-    3 |   24 |                               | QUERY_STATUS_START
-    3 |   24 |                               | QUERY_STATUS_END
-    3 |   24 |                               | QUERY_STATUS_DONE
-    4 |   24 |                               | QUERY_STATUS_SUBMIT
-    4 |   24 |                               | QUERY_STATUS_START
-    4 |   24 |                               | QUERY_STATUS_END
-    4 |   24 |                               | QUERY_STATUS_DONE
+RESET yagpcc.logging_mode;
+SELECT segid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY segid, ccnt, yagp_status_order(query_status) ASC;
+ segid | ccnt |          query_text           |    query_status     
+-------+------+-------------------------------+---------------------
+    -1 |   24 | select * from test_hash_dist; | QUERY_STATUS_SUBMIT
+    -1 |   24 | select * from test_hash_dist; | QUERY_STATUS_START
+    -1 |   24 | select * from test_hash_dist; | QUERY_STATUS_END
+    -1 |   24 | select * from test_hash_dist; | QUERY_STATUS_DONE
+     1 |   24 |                               | QUERY_STATUS_SUBMIT
+     1 |   24 |                               | QUERY_STATUS_START
+     1 |   24 |                               | QUERY_STATUS_END
+     1 |   24 |                               | QUERY_STATUS_DONE
+     2 |   24 |                               | QUERY_STATUS_SUBMIT
+     2 |   24 |                               | QUERY_STATUS_START
+     2 |   24 |                               | QUERY_STATUS_END
+     2 |   24 |                               | QUERY_STATUS_DONE
+       |   24 |                               | QUERY_STATUS_SUBMIT
+       |   24 |                               | QUERY_STATUS_START
+       |   24 |                               | QUERY_STATUS_END
+       |   24 |                               | QUERY_STATUS_DONE
 (16 rows)
 
 SELECT yagpcc.truncate_log() IS NOT NULL AS t;
@@ -93,7 +93,7 @@ END;
 $$ LANGUAGE plpgsql VOLATILE EXECUTE ON ALL SEGMENTS;
 CREATE TABLE test_replicated (id int) DISTRIBUTED REPLICATED;
 INSERT INTO test_replicated SELECT 1;
-SET yagpcc.log_to_table TO TRUE;
+SET yagpcc.logging_mode to 'TBL';
 SELECT COUNT(*) FROM test_replicated, force_segments();
  count 
 -------
@@ -102,26 +102,26 @@ SELECT COUNT(*) FROM test_replicated, force_segments();
 
 DROP TABLE test_replicated;
 DROP FUNCTION force_segments();
-SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
- dbid | ccnt |                       query_text                        |    query_status     
-------+------+---------------------------------------------------------+---------------------
-    1 |   39 | SELECT COUNT(*) FROM test_replicated, force_segments(); | QUERY_STATUS_SUBMIT
-    1 |   39 |                                                         | QUERY_STATUS_START
-    1 |   39 |                                                         | QUERY_STATUS_END
-    1 |   39 |                                                         | QUERY_STATUS_DONE
-    2 |   39 |                                                         | QUERY_STATUS_SUBMIT
-    2 |   39 |                                                         | QUERY_STATUS_START
-    2 |   39 |                                                         | QUERY_STATUS_END
-    2 |   39 |                                                         | QUERY_STATUS_DONE
-    3 |   39 |                                                         | QUERY_STATUS_SUBMIT
-    3 |   39 |                                                         | QUERY_STATUS_START
-    3 |   39 |                                                         | QUERY_STATUS_END
-    3 |   39 |                                                         | QUERY_STATUS_DONE
-    4 |   39 |                                                         | QUERY_STATUS_SUBMIT
-    4 |   39 |                                                         | QUERY_STATUS_START
-    4 |   39 |                                                         | QUERY_STATUS_END
-    4 |   39 |                                                         | QUERY_STATUS_DONE
+RESET yagpcc.logging_mode;
+SELECT segid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY segid, ccnt, yagp_status_order(query_status) ASC;
+ segid | ccnt |                       query_text                        |    query_status     
+-------+------+---------------------------------------------------------+---------------------
+    -1 |   39 | SELECT COUNT(*) FROM test_replicated, force_segments(); | QUERY_STATUS_SUBMIT
+    -1 |   39 | SELECT COUNT(*) FROM test_replicated, force_segments(); | QUERY_STATUS_START
+    -1 |   39 | SELECT COUNT(*) FROM test_replicated, force_segments(); | QUERY_STATUS_END
+    -1 |   39 | SELECT COUNT(*) FROM test_replicated, force_segments(); | QUERY_STATUS_DONE
+     1 |   39 |                                                         | QUERY_STATUS_SUBMIT
+     1 |   39 |                                                         | QUERY_STATUS_START
+     1 |   39 |                                                         | QUERY_STATUS_END
+     1 |   39 |                                                         | QUERY_STATUS_DONE
+     2 |   39 |                                                         | QUERY_STATUS_SUBMIT
+     2 |   39 |                                                         | QUERY_STATUS_START
+     2 |   39 |                                                         | QUERY_STATUS_END
+     2 |   39 |                                                         | QUERY_STATUS_DONE
+       |   39 |                                                         | QUERY_STATUS_SUBMIT
+       |   39 |                                                         | QUERY_STATUS_START
+       |   39 |                                                         | QUERY_STATUS_END
+       |   39 |                                                         | QUERY_STATUS_DONE
 (16 rows)
 
 SELECT yagpcc.truncate_log() IS NOT NULL AS t;
@@ -135,24 +135,24 @@ SET allow_system_table_mods = ON;
 CREATE TABLE test_partial_dist (id int, data text) DISTRIBUTED BY (id);
 UPDATE gp_distribution_policy SET numsegments = 2 WHERE localoid = 'test_partial_dist'::regclass;
 INSERT INTO test_partial_dist SELECT * FROM generate_series(1, 100);
-SET yagpcc.log_to_table TO TRUE;
+SET yagpcc.logging_mode to 'TBL';
 SELECT COUNT(*) FROM test_partial_dist;
  count 
 -------
    100
 (1 row)
 
-SET yagpcc.log_to_table TO FALSE;
+RESET yagpcc.logging_mode;
 DROP TABLE test_partial_dist;
 RESET allow_system_table_mods;
 -- Should see 12 rows.
-SELECT ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT ccnt, query_text, query_status FROM yagpcc.log ORDER BY segid, ccnt, yagp_status_order(query_status) ASC;
  ccnt |               query_text                |    query_status     
 ------+-----------------------------------------+---------------------
    57 | SELECT COUNT(*) FROM test_partial_dist; | QUERY_STATUS_SUBMIT
-   57 |                                         | QUERY_STATUS_START
-   57 |                                         | QUERY_STATUS_END
-   57 |                                         | QUERY_STATUS_DONE
+   57 | SELECT COUNT(*) FROM test_partial_dist; | QUERY_STATUS_START
+   57 | SELECT COUNT(*) FROM test_partial_dist; | QUERY_STATUS_END
+   57 | SELECT COUNT(*) FROM test_partial_dist; | QUERY_STATUS_DONE
    57 |                                         | QUERY_STATUS_SUBMIT
    57 |                                         | QUERY_STATUS_START
    57 |                                         | QUERY_STATUS_END

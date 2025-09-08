@@ -75,7 +75,13 @@ void insert_log(const yagpcc::SetQueryReq &req) {
 
   /* Return if extension was not loaded */
   namespaceId = get_namespace_oid(schema_name.data(), true /* missing_ok */);
-  if (namespaceId == InvalidOid) {
+  if (!OidIsValid(namespaceId)) {
+    return;
+  }
+
+  /* Return if the table was not created yet */
+  relationId = get_relname_relid(log_relname.data(), namespaceId);
+  if (!OidIsValid(relationId)) {
     return;
   }
 
@@ -87,7 +93,6 @@ void insert_log(const yagpcc::SetQueryReq &req) {
 
   extract_query_req(req, "", values, nulls);
 
-  relationId = get_relname_relid(log_relname.data(), namespaceId);
   rel = heap_open(relationId, RowExclusiveLock);
 
   /* Insert the tuple as a frozen one to ensure it is logged even if txn rolls

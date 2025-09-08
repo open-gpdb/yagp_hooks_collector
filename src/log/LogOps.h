@@ -7,10 +7,6 @@ extern "C" {
 #include "fmgr.h"
 }
 
-namespace yagpcc {
-class SetQueryReq;
-}
-
 extern "C" {
 /* CREATE TABLE yagpcc.__log (...); */
 void init_log();

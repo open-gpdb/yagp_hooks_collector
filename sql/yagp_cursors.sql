@@ -23,19 +23,19 @@ SET yagpcc.enable TO TRUE;
 SET yagpcc.report_nested_queries TO TRUE;
 
 -- DECLARE
-SET yagpcc.log_to_table TO TRUE;
+SET yagpcc.logging_mode to 'TBL';
 
 BEGIN;
 DECLARE cursor_stats_0 CURSOR FOR SELECT 0;
 CLOSE cursor_stats_0;
 COMMIT;
 
-SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+RESET yagpcc.logging_mode;
+SELECT segid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY segid, ccnt, yagp_status_order(query_status) ASC;
 SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 -- DECLARE WITH HOLD
-SET yagpcc.log_to_table TO TRUE;
+SET yagpcc.logging_mode to 'TBL';
 
 BEGIN;
 DECLARE cursor_stats_1 CURSOR WITH HOLD FOR SELECT 1;
@@ -44,13 +44,13 @@ DECLARE cursor_stats_2 CURSOR WITH HOLD FOR SELECT 2;
 CLOSE cursor_stats_2;
 COMMIT;
 
-SET yagpcc.log_to_table TO FALSE;
+RESET yagpcc.logging_mode;
 
-SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT segid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY segid, ccnt, yagp_status_order(query_status) ASC;
 SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 -- ROLLBACK
-SET yagpcc.log_to_table TO TRUE;
+SET yagpcc.logging_mode to 'TBL';
 
 BEGIN;
 DECLARE cursor_stats_3 CURSOR FOR SELECT 1;
@@ -58,9 +58,9 @@ CLOSE cursor_stats_3;
 DECLARE cursor_stats_4 CURSOR FOR SELECT 1;
 ROLLBACK;
 
-SET yagpcc.log_to_table TO FALSE;
+RESET yagpcc.logging_mode;
 
-SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT segid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY segid, ccnt, yagp_status_order(query_status) ASC;
 SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 DROP FUNCTION yagp_status_order(text);

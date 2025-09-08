@@ -18,45 +18,45 @@ SET yagpcc.enable TO TRUE;
 SET yagpcc.report_nested_queries TO TRUE;
 
 -- Basic SELECT tests
-SET yagpcc.log_to_table TO TRUE;
+SET yagpcc.logging_mode to 'TBL';
 
 SELECT 1;
 SELECT COUNT(*) FROM generate_series(1,10);
 
-SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+RESET yagpcc.logging_mode;
+SELECT segid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY segid, ccnt, yagp_status_order(query_status) ASC;
 SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 -- Transaction test
-SET yagpcc.log_to_table TO TRUE;
+SET yagpcc.logging_mode to 'TBL';
 
 BEGIN;
 SELECT 1;
 COMMIT;
 
-SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+RESET yagpcc.logging_mode;
+SELECT segid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY segid, ccnt, yagp_status_order(query_status) ASC;
 SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 -- CTE test
-SET yagpcc.log_to_table TO TRUE;
+SET yagpcc.logging_mode to 'TBL';
 
 WITH t AS (VALUES (1), (2))
 SELECT * FROM t;
 
-SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+RESET yagpcc.logging_mode;
+SELECT segid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY segid, ccnt, yagp_status_order(query_status) ASC;
 SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 -- Prepared statement test
-SET yagpcc.log_to_table TO TRUE;
+SET yagpcc.logging_mode to 'TBL';
 
 PREPARE test_stmt AS SELECT 1;
 EXECUTE test_stmt;
 DEALLOCATE test_stmt;
 
-SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+RESET yagpcc.logging_mode;
+SELECT segid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY segid, ccnt, yagp_status_order(query_status) ASC;
 SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 DROP FUNCTION yagp_status_order(text);
