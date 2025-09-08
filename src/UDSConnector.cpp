@@ -29,10 +29,6 @@ static void inline log_tracing_failure(const yagpcc::SetQueryReq &req,
 
 bool UDSConnector::report_query(const yagpcc::SetQueryReq &req,
                                 const std::string &event) {
-  if (Config::log_to_table()) {
-    ya_gpdb::insert_log(req);
-  }
-
   sockaddr_un address;
   address.sun_family = AF_UNIX;
   std::string uds_path = Config::uds_path();

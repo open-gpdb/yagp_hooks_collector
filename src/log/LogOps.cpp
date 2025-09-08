@@ -31,17 +31,7 @@ void init_log() {
   ObjectAddress tableAddr;
   ObjectAddress schemaAddr;
 
-  /* Return if extension was already loaded */
-  namespaceId = get_namespace_oid(schema_name.data(), true /* missing_ok */);
-  if (namespaceId != InvalidOid) {
-    return;
-  }
-
-  /* Create schema */
-  namespaceId = NamespaceCreate(schema_name.data(), GetUserId() /* ownderId */,
-                                false /* isTemp */);
-  /* Advance command counter to make namespace visible */
-  CommandCounterIncrement();
+  namespaceId = get_namespace_oid(schema_name.data(), false /* missing_ok */);
 
   /* Create table */
   relationId = heap_create_with_catalog(

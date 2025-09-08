@@ -12,15 +12,12 @@ class SetQueryReq;
 }
 
 extern "C" {
-/*
- * CREATE SCHEMA __yagp;
- * CREATE TABLE __yagp.log (...);
- */
+/* CREATE TABLE yagpcc.__log (...); */
 void init_log();
 
-/* TRUNCATE __yagp.log */
+/* TRUNCATE yagpcc.__log */
 void truncate_log();
 }
 
-/* INSERT INTO __yagp.log VALUES (...) */
+/* INSERT INTO yagpcc.__log VALUES (...) */
 void insert_log(const yagpcc::SetQueryReq &req);

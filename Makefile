@@ -33,7 +33,8 @@ OBJS			:=	$(PG_STAT_OBJS)						\
 					$(SRC_DIR)/memory/gpdbwrappers.o		\
 					$(SRC_DIR)/yagp_hooks_collector.o	\
 					$(SRC_DIR)/log/LogOps.o				\
-					$(SRC_DIR)/log/LogSchema.o
+					$(SRC_DIR)/log/LogSchema.o		 	\
+					$(SRC_DIR)/log/TableLogger.o
 EXTRA_CLEAN     := $(GEN_DIR)
 DATA			:= $(wildcard *--*.sql)
 EXTENSION		:= yagp_hooks_collector

@@ -1,6 +1,7 @@
 #include "Config.h"
 #include "UDSConnector.h"
 #include "memory/gpdbwrappers.h"
+#include "log/TableLogger.h"
 
 #define typeid __typeid
 extern "C" {
@@ -112,6 +113,7 @@ void EventSender::executor_after_start(QueryDesc *query_desc, int /* eflags*/) {
   }
   yagpcc::GPMetrics stats;
   std::swap(stats, *query_msg->mutable_query_metrics());
+  TableLogger::log_query_req(*query_msg);
   if (connector->report_query(*query_msg, "started")) {
     clear_big_fields(query_msg);
   }
@@ -135,6 +137,7 @@ void EventSender::executor_end(QueryDesc *query_desc) {
   } else {
     set_gp_metrics(query_msg->mutable_query_metrics(), query_desc, 0, 0);
   }
+  TableLogger::log_query_req(*query_msg);
   if (connector->report_query(*query_msg, "ended")) {
     clear_big_fields(query_msg);
   }
@@ -167,6 +170,7 @@ void EventSender::collect_query_submit(QueryDesc *query_desc) {
   set_qi_nesting_level(query_msg, nesting_level);
   set_qi_slice_id(query_msg);
   set_query_text(query_msg, query_desc);
+  TableLogger::log_query_req(*query_msg);
   if (connector->report_query(*query_msg, "submit")) {
     clear_big_fields(query_msg);
   }
@@ -230,6 +234,7 @@ void EventSender::report_query_done(QueryDesc *query_desc, QueryItem &query,
   set_ic_stats(query_msg->mutable_query_metrics()->mutable_instrumentation(),
                &ic_statistics);
 #endif
+  TableLogger::log_query_req(*query_msg);
   connector->report_query(*query_msg, msg);
 }
 

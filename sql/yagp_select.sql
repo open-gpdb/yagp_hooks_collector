@@ -24,8 +24,8 @@ SELECT 1;
 SELECT COUNT(*) FROM generate_series(1,10);
 
 SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
-SELECT yagp_truncate_log() IS NOT NULL AS t;
+SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 -- Transaction test
 SET yagpcc.log_to_table TO TRUE;
@@ -35,8 +35,8 @@ SELECT 1;
 COMMIT;
 
 SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
-SELECT yagp_truncate_log() IS NOT NULL AS t;
+SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 -- CTE test
 SET yagpcc.log_to_table TO TRUE;
@@ -45,8 +45,8 @@ WITH t AS (VALUES (1), (2))
 SELECT * FROM t;
 
 SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
-SELECT yagp_truncate_log() IS NOT NULL AS t;
+SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 -- Prepared statement test
 SET yagpcc.log_to_table TO TRUE;
@@ -56,8 +56,10 @@ EXECUTE test_stmt;
 DEALLOCATE test_stmt;
 
 SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
-SELECT yagp_truncate_log() IS NOT NULL AS t;
+SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 DROP FUNCTION yagp_status_order(text);
 DROP EXTENSION yagp_hooks_collector;
+RESET yagpcc.enable;
+RESET yagpcc.report_nested_queries;

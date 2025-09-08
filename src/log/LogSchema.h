@@ -23,8 +23,8 @@ class Timestamp;
 } // namespace protobuf
 } // namespace google
 
-inline constexpr std::string_view schema_name = "__yagp";
-inline constexpr std::string_view log_relname = "log";
+inline constexpr std::string_view schema_name = "yagpcc";
+inline constexpr std::string_view log_relname = "__log";
 
 struct LogDesc {
   std::string_view pg_att_name;

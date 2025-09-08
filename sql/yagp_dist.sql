@@ -28,8 +28,8 @@ select * from test_hash_dist where id = 1;
 
 SET yagpcc.log_to_table TO FALSE;
 -- Should see 8 rows.
-SELECT ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
-SELECT yagp_truncate_log() IS NOT NULL AS t;
+SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 SET yagpcc.log_to_table TO TRUE;
 
@@ -38,8 +38,8 @@ select * from test_hash_dist;
 
 DROP TABLE test_hash_dist;
 SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
-SELECT yagp_truncate_log() IS NOT NULL AS t;
+SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 -- Replicated table
 CREATE FUNCTION force_segments() RETURNS SETOF text AS $$
@@ -57,8 +57,8 @@ DROP TABLE test_replicated;
 DROP FUNCTION force_segments();
 
 SET yagpcc.log_to_table TO FALSE;
-SELECT dbid, ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
-SELECT yagp_truncate_log() IS NOT NULL AS t;
+SELECT dbid, ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 -- Partially distributed table (2 numsegments)
 SET allow_system_table_mods = ON;
@@ -71,10 +71,12 @@ SELECT COUNT(*) FROM test_partial_dist;
 SET yagpcc.log_to_table TO FALSE;
 
 DROP TABLE test_partial_dist;
-SET allow_system_table_mods = OFF;
+RESET allow_system_table_mods;
 -- Should see 12 rows.
-SELECT ccnt, query_text, query_status FROM yagp_log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
-SELECT yagp_truncate_log() IS NOT NULL AS t;
+SELECT ccnt, query_text, query_status FROM yagpcc.log ORDER BY dbid, ccnt, yagp_status_order(query_status) ASC;
+SELECT yagpcc.truncate_log() IS NOT NULL AS t;
 
 DROP FUNCTION yagp_status_order(text);
 DROP EXTENSION yagp_hooks_collector;
+RESET yagpcc.enable;
+RESET yagpcc.report_nested_queries;
