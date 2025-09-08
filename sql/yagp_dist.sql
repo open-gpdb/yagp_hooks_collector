@@ -23,8 +23,10 @@ CREATE TABLE test_hash_dist (id int) DISTRIBUTED BY (id);
 INSERT INTO test_hash_dist SELECT 1;
 
 SET yagpcc.log_to_table TO TRUE;
+SET optimizer_enable_direct_dispatch TO TRUE;
 -- Direct dispatch is used here, only one segment is scanned.
 select * from test_hash_dist where id = 1;
+RESET optimizer_enable_direct_dispatch;
 
 SET yagpcc.log_to_table TO FALSE;
 -- Should see 8 rows.
