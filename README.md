@@ -13,7 +13,7 @@ An extension for collecting greenplum query execution metrics and reporting them
 -   **GUC:** `yagpcc.enable`.
 
 #### 3. `EXPLAIN ANALYZE` data
--   **What:** Triggers generation of the `EXPLAIN (JSON, ANALYZE, BUFFERS, TIMING, VERBOSE)` and captures it.
+-   **What:** Triggers generation of the `EXPLAIN (TEXT, ANALYZE, BUFFERS, TIMING, VERBOSE)` and captures it.
 -   **GUCs:** `yagpcc.enable`, `yagpcc.min_analyze_time`, `yagpcc.enable_cdbstats`(ANALYZE), `yagpcc.enable_analyze`(BUFFERS, TIMING, VERBOSE).
 
 #### 4. Other Metrics
