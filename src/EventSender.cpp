@@ -33,7 +33,7 @@ bool EventSender::log_query_req(const yagpcc::SetQueryReq &req,
     clear_big_fields = UDSConnector::report_query(req, event);
     break;
   case LOG_MODE_TBL:
-    insert_log(req);
+    ya_gpdb::insert_log(req);
     clear_big_fields = false;
     break;
   default:
