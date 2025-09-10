@@ -112,7 +112,7 @@ void Config::init() {
       "yagpcc.min_analyze_time",
       "Sets the minimum execution time above which plans will be logged.",
       "Zero prints all plans. -1 turns this feature off.",
-      &guc_min_analyze_time, 0, -1, INT_MAX, PGC_USERSET,
+      &guc_min_analyze_time, 10000, -1, INT_MAX, PGC_USERSET,
       GUC_NOT_IN_SAMPLE | GUC_GPDB_NEED_SYNC | GUC_UNIT_MS, NULL, NULL, NULL);
 
   DefineCustomEnumVariable(
