@@ -160,12 +160,6 @@ void EventSender::executor_after_start(QueryDesc *query_desc, int /* eflags*/) {
   auto &query = get_query(query_desc);
   auto query_msg = query.message.get();
   *query_msg->mutable_start_time() = current_ts();
-
-  auto qkey = query_desc->yagp_query_key;
-  ereport(LOG, (errmsg("YAGPCC Assert: "
-               "tmid=%d ssid=%d ccnt=%d nlvl=%d",
-               qkey->tmid, qkey->ssid, qkey->ccnt, qkey->nesting_level)));
-
   update_query_state(query, QueryState::START, false /* utility */);
   set_query_plan(query_msg, query_desc);
   if (need_collect_analyze()) {
