@@ -54,7 +54,7 @@ SELECT /*test3*/ '😀';
 
 RESET yagpcc.logging_mode;
 -- Emoji has 4 bytes and cut before the last byte => not included.
-SELECT octet_length(get_marked_query('test2')) = 18 AS correct_length;
+SELECT octet_length(get_marked_query('test3')) = 18 AS correct_length;
  correct_length 
 ----------------
  t
