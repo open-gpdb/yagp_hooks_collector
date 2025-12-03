@@ -1,55 +1,68 @@
+DROP EXTENSION IF EXISTS yagp_hooks_collector;
+NOTICE:  extension "yagp_hooks_collector" does not exist, skipping
 CREATE EXTENSION yagp_hooks_collector;
-CREATE OR REPLACE FUNCTION select_previous_insert_query_text()
+CREATE OR REPLACE FUNCTION get_marked_query(marker TEXT)
 RETURNS TEXT AS $$
-DECLARE
-    found_query TEXT;
-BEGIN
-    SELECT query_text INTO found_query
+    SELECT query_text
     FROM yagpcc.log
-    WHERE query_text LIKE '%INSERT%'
-      AND query_text NOT LIKE '%SELECT query_text%'
-      AND query_text NOT LIKE '%select_previous_insert_query_text%'
+    WHERE query_text LIKE '%' || marker || '%'
     ORDER BY datetime DESC
-    LIMIT 1;
-
-    RETURN found_query;
-END;
-$$ LANGUAGE plpgsql VOLATILE;
+    LIMIT 1
+$$ LANGUAGE sql VOLATILE;
 SET yagpcc.enable TO TRUE;
+-- Test 1: 1 byte chars
+SET yagpcc.max_text_size to 19;
 SET yagpcc.logging_mode to 'TBL';
-CREATE TABLE test_utf8 (id int, name text) DISTRIBUTED RANDOMLY;
--- 1 byte chars
-SET yagpcc.max_text_size to 35;
--- byte index:                   34 - H
-INSERT INTO test_utf8 VALUES (1, 'HelloWorld');
-SELECT octet_length(select_previous_insert_query_text()) = 35 AS correct_length;
+SELECT /*test1*/ 'HelloWorld';
+  ?column?  
+------------
+ HelloWorld
+(1 row)
+
+RESET yagpcc.logging_mode;
+SELECT octet_length(get_marked_query('test1')) = 19 AS correct_length;
  correct_length 
 ----------------
  t
 (1 row)
 
--- 2 byte chars
-SET yagpcc.max_text_size to 35;
--- byte index:                   34 |cut| 35 - Р
-INSERT INTO test_utf8 VALUES (2, 'РУССКИЙЯЗЫК');
-SELECT octet_length(select_previous_insert_query_text()) = 36 AS correct_length;
+-- Test 2: 2 byte chars
+SET yagpcc.max_text_size to 19;
+SET yagpcc.logging_mode to 'TBL';
+SELECT /*test2*/ 'РУССКИЙЯЗЫК';
+  ?column?   
+-------------
+ РУССКИЙЯЗЫК
+(1 row)
+
+RESET yagpcc.logging_mode;
+-- Character 'Р' has two bytes and cut in the middle => not included.
+SELECT octet_length(get_marked_query('test2')) = 18 AS correct_length;
  correct_length 
 ----------------
  t
 (1 row)
 
--- 4 byte chars
-SET yagpcc.max_text_size to 35;
--- byte number:                  34 |cut| 35, 36, 37 - emoji
-INSERT INTO test_utf8 VALUES (3, '😀');
-SELECT octet_length(select_previous_insert_query_text()) = 38 AS correct_length;
+-- Test 3: 4 byte chars
+SET yagpcc.max_text_size to 21;
+SET yagpcc.logging_mode to 'TBL';
+SELECT /*test3*/ '😀';
+ ?column? 
+----------
+ 😀
+(1 row)
+
+RESET yagpcc.logging_mode;
+-- Emoji has 4 bytes and cut before the last byte => not included.
+SELECT octet_length(get_marked_query('test2')) = 18 AS correct_length;
  correct_length 
 ----------------
  t
 (1 row)
 
 -- Cleanup
-DROP TABLE test_utf8;
+DROP FUNCTION get_marked_query(TEXT);
 RESET yagpcc.max_text_size;
+RESET yagpcc.logging_mode;
 RESET yagpcc.enable;
 DROP EXTENSION yagp_hooks_collector;
