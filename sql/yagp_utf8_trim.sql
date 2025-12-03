@@ -1,5 +1,4 @@
-DROP EXTENSION IF EXISTS yagp_hooks_collector;
-CREATE EXTENSION yagp_hooks_collector;
+CREATE EXTENSION IF NOT EXISTS yagp_hooks_collector;
 
 CREATE OR REPLACE FUNCTION get_marked_query(marker TEXT)
 RETURNS TEXT AS $$
