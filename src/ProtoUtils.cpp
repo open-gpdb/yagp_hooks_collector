@@ -32,7 +32,7 @@ constexpr uint8_t UTF8_MAX_SYMBOL_BYTES = 4;
 // Returns true if byte is the starting byte of utf8
 // character, false if byte is the continuation (10xxxxxx).
 inline bool utf8_start_byte(uint8_t byte) {
-    return (byte & UTF8_CONTINUATION_BYTE_MASK) != UTF8_CONTINUATION_BYTE;
+  return (byte & UTF8_CONTINUATION_BYTE_MASK) != UTF8_CONTINUATION_BYTE;
 }
 } // namespace
 
@@ -58,26 +58,26 @@ void set_segment_key(yagpcc::SegmentKey *key) {
   key->set_segindex(GpIdentity.segindex);
 }
 
-std::string trim_str_extend_utf8(const char* str, size_t len, size_t lim) {
-    if (unlikely(str == nullptr)) {
-      return std::string();
-    }
-    if (likely(len <= lim || GetDatabaseEncoding() != PG_UTF8)) {
-        return std::string(str, std::min(len, lim));
-    }
+std::string trim_str_extend_utf8(const char *str, size_t len, size_t lim) {
+  if (unlikely(str == nullptr)) {
+    return std::string();
+  }
+  if (likely(len <= lim || GetDatabaseEncoding() != PG_UTF8)) {
+    return std::string(str, std::min(len, lim));
+  }
 
-    // Handle trimming of utf8 correctly, do not cut multi-byte characters.
-    size_t cut_pos = lim;
-    size_t visited_bytes = 0;
-    while (visited_bytes <  UTF8_MAX_SYMBOL_BYTES && cut_pos < len) {
-      if (utf8_start_byte(static_cast<uint8_t>(str[cut_pos]))) {
-        break;
-      }
-      ++visited_bytes;
-      ++cut_pos;
+  // Handle trimming of utf8 correctly, do not cut multi-byte characters.
+  size_t cut_pos = lim;
+  size_t visited_bytes = 0;
+  while (visited_bytes < UTF8_MAX_SYMBOL_BYTES && cut_pos < len) {
+    if (utf8_start_byte(static_cast<uint8_t>(str[cut_pos]))) {
+      break;
     }
+    ++visited_bytes;
+    ++cut_pos;
+  }
 
-    return std::string(str, cut_pos);
+  return std::string(str, cut_pos);
 }
 
 void set_query_plan(yagpcc::SetQueryReq *req, QueryDesc *query_desc) {
@@ -91,7 +91,7 @@ void set_query_plan(yagpcc::SetQueryReq *req, QueryDesc *query_desc) {
     ExplainState es = ya_gpdb::get_explain_state(query_desc, true);
     if (es.str) {
       *qi->mutable_plan_text() = trim_str_extend_utf8(es.str->data, es.str->len,
-                                                     Config::max_plan_size());
+                                                      Config::max_plan_size());
       StringInfo norm_plan = ya_gpdb::gen_normplan(es.str->data);
       *qi->mutable_template_plan_text() = trim_str_extend_utf8(
           norm_plan->data, norm_plan->len, Config::max_plan_size());
@@ -255,8 +255,7 @@ double protots_to_double(const google::protobuf::Timestamp &ts) {
   return double(ts.seconds()) + double(ts.nanos()) / 1000000000.0;
 }
 
-void set_analyze_plan_text(QueryDesc *query_desc,
-                           yagpcc::SetQueryReq *req) {
+void set_analyze_plan_text(QueryDesc *query_desc, yagpcc::SetQueryReq *req) {
   // Make sure it is a valid txn and it is not an utility
   // statement for ExplainPrintPlan() later.
   if (!IsTransactionState() || !query_desc->plannedstmt) {
@@ -272,8 +271,8 @@ void set_analyze_plan_text(QueryDesc *query_desc,
     if (es.str->len > 0 && es.str->data[es.str->len - 1] == '\n') {
       es.str->data[--es.str->len] = '\0';
     }
-    auto trimmed_analyze =
-        trim_str_extend_utf8(es.str->data, es.str->len, Config::max_plan_size());
+    auto trimmed_analyze = trim_str_extend_utf8(es.str->data, es.str->len,
+                                                Config::max_plan_size());
     req->mutable_query_info()->set_analyze_text(trimmed_analyze);
     ya_gpdb::pfree(es.str->data);
   }
