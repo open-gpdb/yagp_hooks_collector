@@ -151,7 +151,7 @@ void set_qi_slice_id(yagpcc::SetQueryReq *req) {
 void set_qi_error_message(yagpcc::SetQueryReq *req, const char *err_msg) {
   auto aqi = req->mutable_add_info();
   *aqi->mutable_error_message() =
-      trim_str_shrink_utf8(error, strlen(error), Config::max_text_size());
+      trim_str_shrink_utf8(err_msg, strlen(err_msg), Config::max_text_size());
 }
 
 void set_metric_instrumentation(yagpcc::MetricInstrumentation *metrics,
