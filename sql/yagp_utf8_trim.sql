@@ -22,7 +22,6 @@ SET yagpcc.logging_mode to 'TBL';
 CREATE TABLE test_utf8 (id int, name text) DISTRIBUTED RANDOMLY;
 
 -- 1 byte chars
--- The cut pos is at 40 character, since every character is 1 byte we need 4
 SET yagpcc.max_text_size to 35;
 -- byte index:                   34 - H
 INSERT INTO test_utf8 VALUES (1, 'HelloWorld');
